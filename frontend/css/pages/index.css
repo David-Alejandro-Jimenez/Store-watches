@@ -1,0 +1,20 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Times New Roman', Times, serif ;
+    background-color: black;
+    color: white;
+}
+
+#divisor {
+    border: 10px white solid;
+}
+
+h1 {
+    font-size: 35px;
+    margin: 10px;
+}
+
