@@ -18,7 +18,7 @@ func SetupRouter() *mux.Router {
 
 	//Routes
 	router.HandleFunc("/", handlers.Main_page).Methods("GET")
-	router.HandleFunc("comments/newComments", )
+	//router.HandleFunc("comments/newComments", )
 
 	return router
 }
