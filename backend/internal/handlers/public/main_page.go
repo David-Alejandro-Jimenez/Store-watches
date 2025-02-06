@@ -1,4 +1,4 @@
-package handlers
+package public
 
 import (
 	"net/http"
@@ -13,5 +13,4 @@ func Main_page(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.ServeFile(w, r, filepath)
-
 }

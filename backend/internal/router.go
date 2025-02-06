@@ -3,7 +3,7 @@ package internal
 import (
 	"net/http"
 
-	"github.com/David-Alejandro-Jimenez/venta-relojes/internal/handlers"
+	"github.com/David-Alejandro-Jimenez/venta-relojes/internal/handlers/public"
 	"github.com/gorilla/mux"
 )
 
@@ -17,7 +17,7 @@ func SetupRouter() *mux.Router {
 	router.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir(staticDir+"/assets/"))))
 
 	//Routes
-	router.HandleFunc("/", handlers.Main_page).Methods("GET")
+	router.HandleFunc("/", public.Main_page).Methods("GET")
 	//router.HandleFunc("comments/newComments", )
 
 	return router
