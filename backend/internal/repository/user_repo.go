@@ -3,9 +3,10 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"log"
 
 	"github.com/David-Alejandro-Jimenez/venta-relojes/internal/repository/database"
-	"github.com/David-Alejandro-Jimenez/venta-relojes/pkg/helpers"
+	"github.com/David-Alejandro-Jimenez/venta-relojes/pkg/security"
 )
 
 func GetUser(username string) (bool, error) {
@@ -13,6 +14,7 @@ func GetUser(username string) (bool, error) {
 	var err = database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM User_Registration WHERE UserName = ?)", username).Scan(&existingUser)
 	
 		if err != nil {
+			log.Println(err)
 			return false, fmt.Errorf("error consultando la base de datos %w", err)
 		}
 	return existingUser, nil
@@ -33,11 +35,11 @@ func GetHashPassword(username string) (string, error) {
 }	
 
 func SaveUser(userName, password string) error {
-	var salt, errSalt = helpers.GenerateSalt()
+	var salt, errSalt = security.GenerateSalt()
 	if errSalt != nil {
 		return errSalt
 	}
-	var hash, err = helpers.HashPassword(password, salt)
+	var hash, err = security.HashPassword(password, salt)
 	if err != nil {
 		return err
 	}

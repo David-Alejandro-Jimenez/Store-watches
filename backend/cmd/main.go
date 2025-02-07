@@ -22,14 +22,13 @@ func startDatabase() {
 	if errdb != nil {
 		log.Println("Did not connect to the database")
 	}
-	defer database.DB.Close()
 }
 
 func startTheServer() {
 	var port = ":8080"
 	var router = internal.SetupRouter()
 	log.Printf("Server listening on http://localhost%s", port)
-
+	
 	var err = http.ListenAndServe(port, router)
 	if err != nil {
 		log.Fatalf("Error starting server: %v", err)
@@ -37,6 +36,7 @@ func startTheServer() {
 }
 
 func main() {
+	defer database.DB.Close()
 	loadConfiguration()
 	startDatabase()
 	startTheServer()

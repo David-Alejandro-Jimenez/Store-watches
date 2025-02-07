@@ -3,6 +3,7 @@ package public
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/David-Alejandro-Jimenez/venta-relojes/internal/models"
 	"github.com/David-Alejandro-Jimenez/venta-relojes/internal/repository"
@@ -53,6 +54,27 @@ func RegisterPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, err := services.GenerateJWT(application.UserName)
+	if err != nil {
+		http.Error(w, "Error generating token", http.StatusInternalServerError)
+		return
+	}
+
+	cookie := http.Cookie{
+		Name: "token",
+		Value: token,
+		Expires: time.Now().Add(12 * time.Hour),
+		HttpOnly: false,
+		Path: "/",
+		Secure: false,
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	http.SetCookie(w, &cookie) 
+
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "User created successfully"})
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "User created successfully",
+		"redirect": "/",
+	})
 }
