@@ -19,6 +19,7 @@ func SetupRouter() *mux.Router {
 	//Routes
 	router.HandleFunc("/", public.Main_page).Methods("GET")
 	router.HandleFunc("/register", public.RegisterPOST).Methods("POST")
+	router.HandleFunc("/login", public.LoginPOST).Methods("POST")
 	//router.HandleFunc("comments/newComments", )
 
 	return router

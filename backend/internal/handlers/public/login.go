@@ -3,14 +3,28 @@ package public
 import (
 	"encoding/json"
 	"net/http"
+
+	//"os"
 	"time"
 
 	"github.com/David-Alejandro-Jimenez/venta-relojes/internal/models"
 	"github.com/David-Alejandro-Jimenez/venta-relojes/internal/repository"
 	"github.com/David-Alejandro-Jimenez/venta-relojes/internal/services"
+	"golang.org/x/crypto/bcrypt"
 )
 
-func RegisterPOST(w http.ResponseWriter, r *http.Request) {
+var err error
+
+//func LoginGET(w http.ResponseWriter, r *http.Request) {
+	//filePath := "./../frontend/pages/login.html"
+	//if _, err := os.Stat(filePath); err != nil {
+	//	http.Error(w, "Archivo no encontrado", http.StatusNotFound)
+	//	return
+	//}
+	//http.ServeFile(w, r, filePath)
+//}
+
+func LoginPOST(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Disallowed method", http.StatusMethodNotAllowed)
 		return
@@ -28,27 +42,34 @@ func RegisterPOST(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	exists, err := repository.GetUser(application.UserName)
+	if err != nil {
+		http.Error(w, "Server error while validating user", http.StatusInternalServerError)
+		return
+		} 
+		
+	if !exists {
+		http.Error(w, "Incorrect username or password", http.StatusUnauthorized)
+		return
+	}
+
+	salt, err := repository.GetSalt(application.UserName)
+	if err != nil {
+		http.Error(w, "Server error retrieving salt", http.StatusInternalServerError)
+		return
+	}
 	
-	err = services.ValidatePassword(application.Password)
+	storeHash, err :=  repository.GetHashPassword(application.UserName)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "Server error retrieving hash", http.StatusInternalServerError)
 		return
 	}
 
-	exists, err := repository.GetUser(application.UserName) 
+	var passwordWithSalt = append([]byte(application.Password), salt...)
+	err = bcrypt.CompareHashAndPassword([]byte(storeHash), passwordWithSalt)
 	if err != nil {
-    	http.Error(w, "Server error while validating user", http.StatusInternalServerError)
-   		return
-	}
-
-	if exists {
-		http.Error(w, "Username already exists", http.StatusConflict)
-		return
-	}
-
-	err = repository.SaveUser(application.UserName, application.Password)
-	if err != nil {
-		http.Error(w, "Error saving user in database", http.StatusInternalServerError)
+		http.Error(w, "Incorrect username or password", http.StatusUnauthorized)
 		return
 	}
 
@@ -70,9 +91,9 @@ func RegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &cookie) 
 
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
-		"message": "User created successfully",
+		"message": "Successful login",
 		"redirect": "/",
 	})
 }
