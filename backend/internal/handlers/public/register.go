@@ -2,6 +2,7 @@ package public
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -19,6 +20,7 @@ func RegisterPOST(w http.ResponseWriter, r *http.Request) {
 	var application models.Account
 	err = json.NewDecoder(r.Body).Decode(&application)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Invalid Request", http.StatusBadRequest)
 		return
 	}
@@ -31,6 +33,8 @@ func RegisterPOST(w http.ResponseWriter, r *http.Request) {
 	
 	err = services.ValidatePassword(application.Password)
 	if err != nil {
+		log.Println(err)
+
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -48,6 +52,7 @@ func RegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 	err = repository.SaveUser(application.UserName, application.Password)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "Error saving user in database", http.StatusInternalServerError)
 		return
 	}
