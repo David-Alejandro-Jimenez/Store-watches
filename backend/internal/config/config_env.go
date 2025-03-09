@@ -14,7 +14,7 @@ import (
 // 5. Confirms the successful loading with a message in the log and returns nil.
 // This feature is essential for loading and centralizing application configuration, allowing it to be flexibly tuned using an environment file and environment variables.
 func LoadConfig() error {
-	viper.New()
+	viper.Reset()
 	viper.SetConfigName(".env")
 	viper.SetConfigType("env")
 	viper.AddConfigPath("internal/config")

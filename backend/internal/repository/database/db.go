@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/spf13/viper"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/spf13/viper"
 )
 
 var DB *sql.DB

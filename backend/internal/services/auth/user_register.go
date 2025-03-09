@@ -2,9 +2,9 @@ package auth
 
 import (
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/models"
-	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/auth"
-	securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
+	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/auth_repository"
 	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/errors"
+	securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
 )
 
 type UserServiceRegister interface {
@@ -13,22 +13,28 @@ type UserServiceRegister interface {
 
 type userServiceRegister struct {
 	userRepo authRepository.UserRepository
+	userNameValidator Validator
+	passwordValidator Validator
 }
 
-func NewUsersService(userRepo authRepository.UserRepository) UserServiceRegister {
-	return &userServiceRegister{userRepo: userRepo}
+func NewUsersServiceRegister(userRepo authRepository.UserRepository, userNameValidator, passwordValidator 	Validator) UserServiceRegister {
+	return &userServiceRegister{
+		userRepo: userRepo,
+		userNameValidator: userNameValidator,
+		passwordValidator: passwordValidator,
+	}
 }
 
-func (a *userServiceRegister) Register(account models.Account) (string, error) {
-	if err := ValidateUserName(account.UserName); err != nil {
+func (r *userServiceRegister) Register(account models.Account) (string, error) {
+	if err := r.userNameValidator.Validate(account.UserName); err != nil {
 		return "", errors.NewBadRequestError("Username cannot be empty or must not have less than 5 characters")
 	}
 
-	if err := ValidatePassword(account.Password); err != nil {
+	if err :=  r.passwordValidator.Validate(account.Password); err != nil {
 		return "", errors.NewBadRequestError("Password cannot be empty, , must not have less than 10 characters, must have a number, a capital letter and a special character")
 	}
 
-	exists, err := a.userRepo.UserExists(account.UserName)
+	exists, err := r.userRepo.UserExists(account.UserName)
 	if err != nil {
 		return "", errors.NewInternalError("error checking if the user exists")
 	}
@@ -36,7 +42,7 @@ func (a *userServiceRegister) Register(account models.Account) (string, error) {
 		return "", errors.NewConflictError("User already exists")
 	}
 
-	if err := a.userRepo.SaveUser(account.UserName, account.Password); err != nil {
+	if err := r.userRepo.SaveUser(account.UserName, account.Password); err != nil {
 		return "", errors.NewInternalError("error saving the user")
 	}
 

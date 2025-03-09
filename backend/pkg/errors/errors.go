@@ -36,7 +36,6 @@ func NewInternalError(message string) *AppError {
     }
 }
 
-// NewAuthError crea un error de autenticación con código HTTP 401 (Unauthorized).
 func NewAuthError(message string) *AppError {
     return &AppError{
         Code:    http.StatusUnauthorized,

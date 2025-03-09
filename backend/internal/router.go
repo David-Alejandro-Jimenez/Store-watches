@@ -3,10 +3,10 @@ package internal
 import (
 	"net/http"
 
-	"github.com/David-Alejandro-Jimenez/sale-watches/internal/handlers/private"
+	//"github.com/David-Alejandro-Jimenez/sale-watches/internal/handlers/private"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/handlers/public"
 	ratelimiter "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/rate_limiter"
-	securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
+	//securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
 	"github.com/gorilla/mux"
 )
 
@@ -26,14 +26,18 @@ func SetupRouter() *mux.Router {
 	router.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir(staticDir+"/assets/"))))
 
 	//Routes public
-	router.Handle("/", ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.Main_page))).Methods("GET")
-	router.Handle("/register", ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.RegisterPOST))).Methods("POST")
-	router.Handle("/login", ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.LoginPOST))).Methods("POST")
-	router.Handle("/comments",  ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.Comments))).Methods("GET")
+	router.Handle("/", ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.Main_page), &ratelimiter.DefaultIPExtractor{}, &ratelimiter.DefaultRateLimiterHandler{})).Methods("GET")
+
+	router.Handle("/register", ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.RegisterPOST), &ratelimiter.DefaultIPExtractor{}, &ratelimiter.DefaultRateLimiterHandler{})).Methods("POST")
+
+	router.Handle("/login", ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.LoginPOST), &ratelimiter.DefaultIPExtractor{}, &ratelimiter.DefaultRateLimiterHandler{})).Methods("POST")
+
+	router.Handle("/comments",  ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.Comments), &ratelimiter.DefaultIPExtractor{}, &ratelimiter.DefaultRateLimiterHandler{})).Methods("GET")
 
 	//Routes protected
-	protectedHandler := securityAuth.AuthMiddleware(ratelimiter.RateLimitMiddleware(http.HandlerFunc(private.NewComment)))
-	router.Handle("/comments/NewComment", protectedHandler).Methods("POST")
+	//protectedHandler := securityAuth.AuthMiddleware(ratelimiter.RateLimitMiddleware(http.HandlerFunc(private.NewComment), &ratelimiter.DefaultIPExtractor{}, &ratelimiter.DefaultRateLimiterHandler{}))
+
+	//router.Handle("/comments/NewComment", protectedHandler).Methods("POST")
 
 	return router
 }

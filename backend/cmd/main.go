@@ -79,7 +79,7 @@ func main() {
 	startDatabase()
 	loadConfigurationYaml()
 	authConfig.InitializeHandlers()
-	ratelimiter.StartCleanupRoutine(30*time.Minute, 10*time.Minute)
+	ratelimiter.StartCleanupRoutine(&ratelimiter.RatelimiterCleanup{}, 30*time.Minute, 10*time.Minute)
 	startTheServer()
 	defer database.DB.Close()
 }
