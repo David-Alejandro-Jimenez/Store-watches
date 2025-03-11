@@ -7,9 +7,8 @@ import (
 
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/config"
-	"github.com/David-Alejandro-Jimenez/sale-watches/internal/config/auth_config"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/database"
-	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/rate_limiter"
+	ratelimiter "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/rate_limiter"
 )
 
 // The loadConfigurationEnv function is responsible for initializing the application configuration by loading the environment file.
@@ -21,19 +20,6 @@ func loadConfigurationEnv() {
 	var errConfig = config.LoadConfig()
 	if errConfig != nil {
 		log.Fatalf("Error loading configuration: %v", errConfig)
-	}
-}
-
-// The loadConfigurationYaml function is responsible for loading the rate limiter configuration from a YAML file.
-// 1. Purpose: Load and apply rate limiter settings from a YAML file.
-// 2. Process:
-		// Call config.ConfigRateLimiter().
-		// Checks and handles possible errors, terminating execution if the configuration could not be loaded.
-// This feature ensures that the application does not start without a valid rate limiter configuration, which is essential to protect the system from request abuse.
-func loadConfigurationYaml() {
-	var errRateLimiter = config.ConfigRateLimiter()
-	if errRateLimiter != nil {
-		log.Fatalf("Error loading rate limiter configuration: %v", errRateLimiter)
 	}
 }
 
@@ -56,11 +42,9 @@ func startDatabase() {
 // 3. Start and Listen: Start the server using http.ListenAndServe.
 // 4. Error Handling: If any error occurs, execution is stopped and the error is logged.
 // This feature is essential to get the HTTP server up and running and begin serving application requests.
-func startTheServer() {
+func startTheServer(router http.Handler) {
 	var port = ":8080"
-	var router = internal.SetupRouter()
 	log.Printf("Server listening on http://localhost%s", port)
-	
 	var err = http.ListenAndServe(port, router)
 	if err != nil {
 		log.Fatalf("Error al iniciar el servidor: %v", err)
@@ -77,9 +61,15 @@ func startTheServer() {
 func main() {
 	loadConfigurationEnv()
 	startDatabase()
-	loadConfigurationYaml()
-	authConfig.InitializeHandlers()
-	ratelimiter.StartCleanupRoutine(&ratelimiter.RatelimiterCleanup{}, 30*time.Minute, 10*time.Minute)
-	startTheServer()
+	//loadConfigurationYaml()
+	manager := ratelimiter.NewRateLimiterManager()
+    cleaner := ratelimiter.NewRateLimiterCleaner(manager)
+    cleaner.Start(30*time.Minute, 10*time.Minute)
+
+    // Creamos el handler con el manager
+    rateHandler := ratelimiter.NewDefaultRateLimiter(manager)
+
+	router := internal.SetupRouter(rateHandler)
+	startTheServer(router)
 	defer database.DB.Close()
 }

@@ -1,7 +1,7 @@
 package authConfig
 
 import (
-	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/auth_repository"
+	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/auth"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/database"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/services/auth"
 )

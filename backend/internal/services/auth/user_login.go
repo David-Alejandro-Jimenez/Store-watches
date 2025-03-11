@@ -2,7 +2,7 @@ package auth
 
 import (
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/models"
-	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/auth_repository"
+	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/auth"
 	securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
 	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
@@ -18,7 +18,7 @@ type userServiceLogin struct{
 	passwordValidator Validator
 }
 
-func NewUsersServiceLogin(userRepo authRepository.UserRepository,  userNameValidator, passwordValidator 	Validator) UserServiceLogin {
+func NewUsersServiceLogin(userRepo authRepository.UserRepository,  userNameValidator, passwordValidator Validator) UserServiceLogin {
 	return &userServiceLogin{
 		userRepo: userRepo,
 		userNameValidator: userNameValidator,

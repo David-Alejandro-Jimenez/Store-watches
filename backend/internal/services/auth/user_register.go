@@ -2,7 +2,7 @@ package auth
 
 import (
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/models"
-	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/auth_repository"
+	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/auth"
 	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/errors"
 	securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
 )
@@ -17,7 +17,7 @@ type userServiceRegister struct {
 	passwordValidator Validator
 }
 
-func NewUsersServiceRegister(userRepo authRepository.UserRepository, userNameValidator, passwordValidator 	Validator) UserServiceRegister {
+func NewUsersServiceRegister(userRepo authRepository.UserRepository, userNameValidator, passwordValidator Validator) UserServiceRegister {
 	return &userServiceRegister{
 		userRepo: userRepo,
 		userNameValidator: userNameValidator,

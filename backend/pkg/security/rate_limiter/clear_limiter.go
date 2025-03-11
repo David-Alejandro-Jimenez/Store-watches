@@ -2,22 +2,20 @@ package ratelimiter
 
 import "time"
 
-type CleanupHandler interface {
-	Cleanup(expirationDuration time.Duration)
+type RateLimiterCleaner struct {
+	manager RateLimiterManager
 }
 
-type RatelimiterCleanup struct {}
-
-func (c *RatelimiterCleanup) Cleanup(expirationDuration time.Duration) {
-	CleanupInactiveLimiters(expirationDuration)
+func NewRateLimiterCleaner(manager RateLimiterManager) *RateLimiterCleaner {
+	return &RateLimiterCleaner{manager: manager}
 }
 
-func StartCleanupRoutine(handler CleanupHandler, expirationDuration, cleanupInterval time.Duration) {
+func (c *RateLimiterCleaner) Start(expirationDuration, cleanupInterval time.Duration) {
 	go func() {
 		ticker := time.NewTicker(cleanupInterval)
 		defer ticker.Stop()
 		for range ticker.C {
-			CleanupInactiveLimiters(expirationDuration)
+			c.manager.CleanupInactiveLimiters(expirationDuration)
 		}
 	}()
 }

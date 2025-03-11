@@ -5,39 +5,38 @@ import (
 
 	//"github.com/David-Alejandro-Jimenez/sale-watches/internal/handlers/private"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/handlers/public"
-	ratelimiter "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/rate_limiter"
+	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/rate_limiter"
 	//securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
 	"github.com/gorilla/mux"
 )
 
-// The SetupRouter function is responsible for configuring and returning the main router of the web application, using the mux package to define the routes and corresponding handlers.
-// 1. Static route configuration: Allows serving resource files (CSS, JS, images) directly from the frontend directory.
-// 2. Definition of public routes: Routes accessible to any user, with rate limiting protection to prevent abuse.
-// 3. Definition of protected routes: Routes that require authentication, combining rate limiting and authentication middlewares.
-// 4. Main router: A mux.Router object is returned that centralizes all configured routes.
-// This framework facilitates centralized route management and enforcement of security and performance policies (such as authentication and rate control) in a modular and scalable manner.
-func SetupRouter() *mux.Router {
-	var router = mux.NewRouter()
+type RouterConfiguration interface {
+	SetupRoutes(router *mux.Router)
+}
 
-	//Use de javascript, html, css and images
+type DefaultRouterConfiguration struct {
+	IPExtractor ratelimiter.IPExtractor
+	RateLimiter ratelimiter.RateLimiterHandler
+}
+
+func (c *DefaultRouterConfiguration) SetupRoutes(router *mux.Router) {
 	var staticDir = "./../frontend"
 	router.PathPrefix("/css/").Handler(http.StripPrefix("/css/", http.FileServer(http.Dir(staticDir+"/css/"))))
 	router.PathPrefix("/js/").Handler(http.StripPrefix("/js/", http.FileServer(http.Dir(staticDir+"/js/"))))
 	router.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir(staticDir+"/assets/"))))
 
-	//Routes public
-	router.Handle("/", ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.Main_page), &ratelimiter.DefaultIPExtractor{}, &ratelimiter.DefaultRateLimiterHandler{})).Methods("GET")
+	router.Handle("/", ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.Main_page), c.IPExtractor, c.RateLimiter)).Methods("GET")
+	router.Handle("/register", ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.RegisterPOST), c.IPExtractor, c.RateLimiter)).Methods("POST")
+	router.Handle("/login", ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.LoginPOST), c.IPExtractor, c.RateLimiter)).Methods("POST")
+	router.Handle("/comments", ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.Comments), c.IPExtractor, c.RateLimiter)).Methods("GET")
+}
 
-	router.Handle("/register", ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.RegisterPOST), &ratelimiter.DefaultIPExtractor{}, &ratelimiter.DefaultRateLimiterHandler{})).Methods("POST")
-
-	router.Handle("/login", ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.LoginPOST), &ratelimiter.DefaultIPExtractor{}, &ratelimiter.DefaultRateLimiterHandler{})).Methods("POST")
-
-	router.Handle("/comments",  ratelimiter.RateLimitMiddleware(http.HandlerFunc(public.Comments), &ratelimiter.DefaultIPExtractor{}, &ratelimiter.DefaultRateLimiterHandler{})).Methods("GET")
-
-	//Routes protected
-	//protectedHandler := securityAuth.AuthMiddleware(ratelimiter.RateLimitMiddleware(http.HandlerFunc(private.NewComment), &ratelimiter.DefaultIPExtractor{}, &ratelimiter.DefaultRateLimiterHandler{}))
-
-	//router.Handle("/comments/NewComment", protectedHandler).Methods("POST")
-
+func SetupRouter(rateHandler ratelimiter.RateLimiterHandler) *mux.Router {
+	router := mux.NewRouter()
+	configurator := &DefaultRouterConfiguration{
+		IPExtractor: &ratelimiter.DefaultIPExtractor{},
+		RateLimiter: rateHandler,
+	}
+	configurator.SetupRoutes(router)
 	return router
 }
