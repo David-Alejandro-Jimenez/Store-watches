@@ -3,7 +3,7 @@ package auth
 import (
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/models"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/auth"
-	securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
+	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
 	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )

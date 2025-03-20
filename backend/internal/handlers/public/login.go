@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	authConfig "github.com/David-Alejandro-Jimenez/sale-watches/internal/config/auth_config"
+	"github.com/David-Alejandro-Jimenez/sale-watches/internal/config/auth_config"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/models"
 	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/errors"
 )

@@ -13,7 +13,7 @@ import (
  		// In case of error, an error message is returned.
 		// If everything is correct, send the file to the client using http.ServeFile.
 // This function is essential to load the main frontend interface in the web application.
-func Main_page(w http.ResponseWriter, r *http.Request) {
+func MainPage(w http.ResponseWriter, r *http.Request) {
 	var filepath = "./../frontend/index.html"
 	var _, err = os.Stat(filepath)
 	if err != nil {

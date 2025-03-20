@@ -4,23 +4,24 @@ import (
 	"encoding/json"
 	"net/http"
 
-	
-	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository"
+	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/comments"
 )
 
-// The Comments function is responsible for obtaining and sending the list of comments stored in the database in JSON format.
-// 1. Obtaining: The comments are retrieved through a query in the database.
-// 2. Error Handling: Any error is handled by returning a 500 error response.
-// 3. Response Format: The response is configured to send JSON.
-// 4. Encoding: Comments encoded in JSON are sent to the client.
-// This feature is essential for displaying comments on the frontend of the application or for any client that needs to access this information.
-func Comments(w http.ResponseWriter, r *http.Request) {
-	comments, err := repository.GetComments()
+type HandlerComment struct {
+	CommentRepo commentsRepository.CommentRepository
+}
+
+func NewHandlerComment(commentRepo commentsRepository.CommentRepository) *HandlerComment {
+	return &HandlerComment{CommentRepo: commentRepo}
+}
+
+func (h *HandlerComment) Comments(w http.ResponseWriter, r *http.Request) {
+	comments, err := h.CommentRepo.Obtener()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")	
 	json.NewEncoder(w).Encode(comments)
 }

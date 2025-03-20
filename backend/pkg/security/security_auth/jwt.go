@@ -19,7 +19,7 @@ var jwtSecret = []byte(viper.GetString("JWT_SECRET_KEY"))
 // This implementation allows you to authenticate users and validate their identity in subsequent requests using the generated token.
 func GenerateJWT(userName string) (string, error) {
 	var claims = models.Claims{
-		UserName: userName,
+		UserName: userName, 
 			RegisteredClaims: jwt.RegisteredClaims{
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
 			},

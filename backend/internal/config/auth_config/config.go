@@ -4,6 +4,7 @@ import (
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/auth"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/database"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/services/auth"
+	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
 )
 
 var (
@@ -12,11 +13,17 @@ var (
 	UserRepo         authRepository.UserRepository
 	UserServiceLogin auth.UserServiceLogin
 	UserServiceRegister auth.UserServiceRegister
+	SaltGenerator securityAuth.Generator
+	Hasher securityAuth.Hasher
 )
 
 
 func InitializeHandlers() {
-	UserRepo = authRepository.NewUserRepository(database.DB)
+	UserNameValidator = auth.UserNameValidator{}
+	PasswordValidator = auth.PasswordValidator{}
+	SaltGenerator = securityAuth.RandomSaltGenerator{}
+	Hasher = securityAuth.BcryptHasher{}
+	UserRepo = authRepository.NewUserRepository(database.DB, SaltGenerator, Hasher)
 	UserServiceLogin = auth.NewUsersServiceLogin(UserRepo, &UserNameValidator, &PasswordValidator)
 	UserServiceRegister = auth.NewUsersServiceRegister(UserRepo, &UserNameValidator, &PasswordValidator)
 }

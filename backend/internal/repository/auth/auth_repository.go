@@ -3,8 +3,9 @@ package authRepository
 import (
 	"database/sql"
 	"fmt"
+	"log"
 
-	securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
+	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
 )
 
 type UserRepository interface {
@@ -16,13 +17,29 @@ type UserRepository interface {
 
 type userRepository struct {
 	db *sql.DB
+    saltGenerator securityAuth.Generator
+    hasher        securityAuth.Hasher
 }
 
-func NewUserRepository(db *sql.DB) UserRepository {
+func NewUserRepository(db *sql.DB, saltGenerator securityAuth.Generator, hasher securityAuth.Hasher) UserRepository {
     if db == nil {
-        panic("database.DB is nil")
+        log.Fatal("ERROR: database.DB is nil in NewUserRepository")
     }
-    return &userRepository{db: db}
+
+    if saltGenerator == nil {
+        log.Fatal("ERROR: saltGenerator is nil in NewUserRepository")
+    }
+    if hasher == nil {
+        log.Fatal("ERROR: hasher is nil in NewUserRepository")
+    }
+
+    log.Println("NewUserRepository() is running successfully")
+
+    return &userRepository{
+        db: db,
+        saltGenerator: saltGenerator,
+        hasher: hasher,
+    }
 }
 
 func (a *userRepository) UserExists(username string) (bool, error) {
@@ -63,12 +80,16 @@ func (a *userRepository) GetSalt(username string) (string, error) {
 
 
 func (a *userRepository) SaveUser(username, password string) error {
-    salt, err := securityAuth.GenerateSalt()
+    salt, err := a.saltGenerator.Generate()
 	if err != nil {
+        log.Println("error save user 1", err)
 		return err
 	}
-	hash, err := securityAuth.HashPassword(password, salt)
+
+    combined := securityAuth.Combined(password, salt)
+    hash, err := a.hasher.Hash(combined)
 	if err != nil {
+        log.Println("error save user 2", err)
 		return err
 	}
 

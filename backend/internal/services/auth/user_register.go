@@ -4,7 +4,7 @@ import (
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/models"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/auth"
 	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/errors"
-	securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
+	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
 )
 
 type UserServiceRegister interface {
