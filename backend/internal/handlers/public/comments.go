@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/comments"
+	commentsRepository "github.com/David-Alejandro-Jimenez/sale-watches/internal/repository/comments"
 )
 
 type HandlerComment struct {
@@ -16,12 +16,12 @@ func NewHandlerComment(commentRepo commentsRepository.CommentRepository) *Handle
 }
 
 func (h *HandlerComment) Comments(w http.ResponseWriter, r *http.Request) {
-	comments, err := h.CommentRepo.Obtener()
+	comments, err := h.CommentRepo.GetAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
-	w.Header().Set("Content-Type", "application/json")	
+
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(comments)
 }

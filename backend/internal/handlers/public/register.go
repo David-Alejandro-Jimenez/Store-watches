@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"time"
+	"os"
 
-	"github.com/David-Alejandro-Jimenez/sale-watches/internal/config/auth_config"
+	authConfig "github.com/David-Alejandro-Jimenez/sale-watches/internal/config/auth_config"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/models"
 	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/errors"
+	httpUtil "github.com/David-Alejandro-Jimenez/sale-watches/pkg/http"
 )
 
-func RegisterPOST(w http.ResponseWriter, r *http.Request) {
+func PostRegister(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if r.Method != http.MethodPost {
 		http.Error(w, "Disallowed method", http.StatusMethodNotAllowed)
@@ -35,22 +36,14 @@ func RegisterPOST(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	
-	cookie := http.Cookie{
-		Name: "token",
-		Value: token,
-		Expires: time.Now().Add(12 * time.Hour),
-		HttpOnly: false,
-		Path: "/",
-		Secure: false,
-		SameSite: http.SameSiteLaxMode,
-	}
 
-	http.SetCookie(w, &cookie) 
+	isProduction := os.Getenv("ENV") == "production"
+
+	httpUtil.SetAuthCookie(w, token, isProduction)
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{
-		"message": "User created successfully",
+		"message":  "User created successfully",
 		"redirect": "/",
 	})
 }

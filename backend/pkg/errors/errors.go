@@ -10,7 +10,6 @@ type AppError struct {
     Message string
 }
 
-
 func (e *AppError) Error() string {
     return fmt.Sprintf("(%d) %s", e.Code, e.Message)
 }
@@ -39,6 +38,13 @@ func NewInternalError(message string) *AppError {
 func NewAuthError(message string) *AppError {
     return &AppError{
         Code:    http.StatusUnauthorized,
+        Message: message,
+    }
+}
+
+func NewTooManyRequestsError(message string) *AppError {
+    return &AppError{
+        Code:    http.StatusTooManyRequests,
         Message: message,
     }
 }

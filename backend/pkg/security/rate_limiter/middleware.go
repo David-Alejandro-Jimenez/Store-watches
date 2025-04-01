@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/errors"
 	"golang.org/x/time/rate"
 )
 
@@ -57,7 +58,7 @@ func RateLimitMiddleware(next http.Handler, ipExtractor IPExtractor, rateLimiter
 
 		limiter := rateLimiter.GetRateLimiterForIP(clientIP)
 		if !limiter.Allow() {
-			http.Error(w, "Too many requests", http.StatusTooManyRequests)
+			errors.NewTooManyRequestsError("Too many Requests")
 			return
 		}
 		next.ServeHTTP(w, r)
