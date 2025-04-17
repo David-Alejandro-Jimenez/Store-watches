@@ -1,119 +1,127 @@
+// Package config provides application configuration management for the sale-watches application.
+// It wraps Viper to load configuration from YAML files, environment variables, and defaults.
 package config
 
 import (
-	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
+	"github.com/David-Alejandro-Jimenez/sale-watches/internal/core/domain/models"
 	"github.com/spf13/viper"
 )
 
+// AppConfig holds the Viper instance for application-wide settings.
+// It offers typed accessors for different configuration values and validation routines for security-sensitive settings.
 type AppConfig struct {
-	Database  DatabaseConfig
-	Server    ServerConfig
-	Security  SecurityConfig
-	RateLimit RateLimitConfig
+	config *viper.Viper
 }
 
-type DatabaseConfig struct {
-	User     string
-	Password string
-	Host     string
-	Port     string
-	Name     string
-	DSN      string
+// NewAppConfig initializes and returns a new AppConfig.
+// It sets up Viper to read from a YAML file named "config" in the ./internal/config directory, registers default values, enables automatic environment variable overrides, and logs warnings if the config file cannot be read.
+func NewAppConfig() *AppConfig {
+	config := viper.New()
+
+	// Configuration file settings
+	config.SetConfigName("config")
+	config.SetConfigType("yaml")
+	config.AddConfigPath("./internal/config")
+
+	// Default values for JWT, server port, rate limiting, static directory, and database
+	config.SetDefault("security.jwt.jwt_secret", "your-secret-key")
+
+	config.SetDefault("server.port", "8080")
+	config.SetDefault("rate_limiting.requests", 10.0)
+	config.SetDefault("rate_limiting.cleanup_minutes", 5)
+
+	config.SetDefault("STATIC_DIR", "./../frontend")
+
+	config.SetDefault("database.user", "root")
+	config.SetDefault("database.password", "password")
+	config.SetDefault("database.host", "localhost")
+	config.SetDefault("database.port", 3306)
+	config.SetDefault("database.name", "store_watches")
+
+	// Allow environment variables to override settings
+	config.AutomaticEnv()
+
+	// Attempt to read the config file; log a warning if it fails
+	if err := config.ReadInConfig(); err != nil {
+		log.Printf("Warning: Error reading configuration file: %v", err)
+		log.Println("Using default values and environment variable")
+	}
+
+	return &AppConfig{
+		config: config,
+	}
 }
 
-type ServerConfig struct {
-	Port           string
-	AllowedOrigins []string
+// GetPort returns the HTTP server port as a string.
+// It falls back to "8080" if not set.
+func (a *AppConfig) GetPort() string {
+	port := a.config.GetString("server.port")
+	if port == "" {
+		return "8080"
+	}
+	return port
 }
 
-type SecurityConfig struct {
-	JWTSecret            string
-	JWTExpirationMinutes int
-	PasswordMinLength    int
+// GetConfig exposes the underlying Viper instance for advanced use cases.
+func (a *AppConfig) GetConfig() *viper.Viper {
+	return a.config
 }
 
-type RateLimitConfig struct {
-	RequestsPerMinute int
-	CleanupInterval   int
-	ExpirationTime    int
+// GetJWTSecret retrieves the JWT secret key from configuration.
+func (a *AppConfig) GetJWTSecret() string {
+	return a.config.GetString("security.jwt.jwt_secret")
 }
 
-var Config AppConfig
-
-func LoadConfig() error {
-	viper.Reset()
-	viper.SetConfigName(".env")
-	viper.SetConfigType("env")
-	viper.AddConfigPath("internal/config")
-
-	var err = viper.ReadInConfig()
-	if err != nil {
-		log.Printf("Error loading configuration: %v", err)
-		return err
+// GetRateLimitConfig returns a LimiterConfig populated from rate_limiting settings.
+func (a *AppConfig) GetRateLimitConfig() models.LimiterConfig {
+	return models.LimiterConfig{
+		RequestPerSecond: a.config.GetFloat64("rate_limiting.requests"),
+		Burst:            a.config.GetInt("rate_limiting.cleanup_minutes"),
 	}
-
-	viper.AutomaticEnv()
-	log.Println(".env file loaded successfully")
-
-	Config.Database.User = viper.GetString("DB_USER")
-	Config.Database.Password = viper.GetString("DB_PASSWORD")
-	Config.Database.Host = viper.GetString("DB_HOST")
-	Config.Database.Port = viper.GetString("DB_PORT")
-	Config.Database.Name = viper.GetString("DB_NAME")
-	Config.Database.DSN = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4",
-		Config.Database.User,
-		Config.Database.Password,
-		Config.Database.Host,
-		Config.Database.Port,
-		Config.Database.Name)
-
-	Config.Server.Port = viper.GetString("SERVER_PORT")
-	if Config.Server.Port == "" {
-		Config.Server.Port = "8080"
-	}
-
-	Config.Security.JWTSecret = viper.GetString("JWT_SECRET")
-	Config.Security.JWTExpirationMinutes = viper.GetInt("JWT_EXPIRATION_MINUTES")
-	if Config.Security.JWTExpirationMinutes == 0 {
-		Config.Security.JWTExpirationMinutes = 60
-	}
-	Config.Security.PasswordMinLength = viper.GetInt("PASSWORD_MIN_LENGTH")
-	if Config.Security.PasswordMinLength == 0 {
-		Config.Security.PasswordMinLength = 8
-	}
-
-	Config.RateLimit.RequestsPerMinute = viper.GetInt("RATE_LIMIT_REQUESTS")
-	if Config.RateLimit.RequestsPerMinute == 0 {
-		Config.RateLimit.RequestsPerMinute = 100
-	}
-	Config.RateLimit.CleanupInterval = viper.GetInt("RATE_LIMIT_CLEANUP_MINUTES")
-	if Config.RateLimit.CleanupInterval == 0 {
-		Config.RateLimit.CleanupInterval = 10
-	}
-	Config.RateLimit.ExpirationTime = viper.GetInt("RATE_LIMIT_EXPIRATION_MINUTES")
-	if Config.RateLimit.ExpirationTime == 0 {
-		Config.RateLimit.ExpirationTime = 30
-	}
-
-	return validateConfig()
 }
 
-func validateConfig() error {
-	if Config.Database.User == "" {
-		return fmt.Errorf("DB_USER is required")
-	}
-	if Config.Database.Host == "" {
-		return fmt.Errorf("DB_HOST is required")
-	}
-	if Config.Database.Name == "" {
-		return fmt.Errorf("DB_NAME is required")
+// GetStaticDir returns the path to the static files directory.
+// It verifies that the configured directory exists, and if not, attempts to resolve an alternate path relative to the executable.
+// Logs a warning if neither path exists.
+func (a *AppConfig) GetStaticDir() string {
+	// Get the value from the configuration
+	staticDir := a.config.GetString("STATIC_DIR")
+
+	// If empty, use a default value
+	if staticDir == "" {
+		staticDir = "./../frontend"
 	}
 
-	if Config.Security.JWTSecret == "" {
-		return fmt.Errorf("JWT_SECRET is required for security")
+	// Check if the directory exists
+	if _, err := os.Stat(staticDir); os.IsNotExist(err) {
+		// Fallback: resolve relative to executable location
+		execPath, err := os.Executable()
+		if err == nil {
+			execDir := filepath.Dir(execPath)
+			altPath := filepath.Join(execDir, "..", "frontend")
+			if _, err := os.Stat(altPath); err == nil {
+				return altPath
+			}
+		}
+		log.Printf("Warning: Static directory '%s' not found", staticDir)
 	}
 
-	return nil
+	return staticDir
+}
+
+// IsProduction returns true if the ENV environment variable equals "production".
+func (a *AppConfig) IsProduction() bool {
+	return a.config.GetString("ENV") == "production"
+}
+
+// ValidateConfig performs sanity checks on critical settings.
+// Currently warns if the default JWT secret is used in production
+func (a *AppConfig) ValidateConfig() {
+	if a.GetJWTSecret() == "your-secret-key" && a.IsProduction() {
+		log.Println("WARNING: Using default JWT key in production, this is insecure")
+	}
 }
