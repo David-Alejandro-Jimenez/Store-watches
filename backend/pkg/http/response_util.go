@@ -25,6 +25,6 @@ func HandleError(w http.ResponseWriter, err error) {
 	if appErr, ok := err.(*errors.AppError); ok {
 		http.Error(w, appErr.Message, appErr.Code)
 	} else {
-		http.Error(w, "Error interno del servidor", http.StatusInternalServerError)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
