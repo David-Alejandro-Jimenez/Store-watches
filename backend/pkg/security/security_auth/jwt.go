@@ -25,39 +25,17 @@ func NewJWTService(secretKey string) *JWTService {
 
 // GenerateJWT generates a signed JWT for the specified userName.
 // The token embeds the username and an expiration set to one hour from now.
-func (j *JWTService) GenerateJWT(userName string) (string, error) {
+func (j *JWTService) GenerateJWT(userId int, userName string) (string, error) {
 	var claims = models.Claims{
+		UserId: userId,
 		UserName: userName,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Hour)),
 		},
 	}
 
 	var token = jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(j.secretKey)
-}
-
-// ValidateToken parses and verifies the given tokenString.
-// It returns an error if parsing fails, the signature is invalid, or the token is expired.
-func (j *JWTService) ValidateToken(tokenString string) error {
-	var token, err = jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// Ensure the signing method is HMAC
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-
-		return j.secretKey, nil
-	})
-
-	if err != nil {
-		return err
-	}
-
-	if !token.Valid {
-		return fmt.Errorf("invalid token")
-	}
-
-	return nil
 }
 
 // defaultJWTService holds the globally configured JWTService for convenience.
@@ -71,18 +49,33 @@ func SetDefaultJWTService(secretKey string) {
 
 // GenerateJWT signs a token for userName using the default service.
 // Returns an error if the service has not been initialized.
-func GenerateJWT(userName string) (string, error) {
+func GenerateJWT(userId int, userName string) (string, error) {
 	if defaultJWTService == nil {
 		return "", fmt.Errorf("JWT service not initialized")
 	}
-	return defaultJWTService.GenerateJWT(userName)
+	return defaultJWTService.GenerateJWT(userId, userName)
 }
 
-// ValidateToken verifies tokenString using the default service.
-// Returns an error if validation fails or the service is not initialized.
-func ValidateToken(tokenString string) error {
+func ParseTokenWithClaims(tokenString string) (*models.Claims, error) {
 	if defaultJWTService == nil {
-		return fmt.Errorf("servicio JWT no inicializado")
+		return nil, fmt.Errorf("JWT service not initialized")
 	}
-	return defaultJWTService.ValidateToken(tokenString)
+
+	claims := &models.Claims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return defaultJWTService.secretKey, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	if !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	return claims, nil
 }

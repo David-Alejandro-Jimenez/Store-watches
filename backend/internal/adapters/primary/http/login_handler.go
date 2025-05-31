@@ -11,6 +11,7 @@ import (
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/core/ports/input"
 	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/errors"
 	httpUtil "github.com/David-Alejandro-Jimenez/sale-watches/pkg/http"
+	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/http/cookies"
 )
 
 // LoginHandler handles HTTP requests related to user login.
@@ -51,7 +52,7 @@ func (h *LoginHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	isProduction := os.Getenv("ENV") == "production"
-	httpUtil.SetAuthCookie(w, token, isProduction)
+	cookies.SetAuthCookie(w, token, isProduction)
 	httpUtil.SendJSONResponse(w, http.StatusOK, map[string]string{
 		"message": "Successful login",
 	})

@@ -19,11 +19,3 @@ type UserServiceRegister interface {
 	// Returns a JWT token string for the newly created account or an error if registration fails.
 	Register(account models.Account) (string, error)
 }
-
-// Validator defines the interface for input validation operations.
-// Implementations should enforce specific validation rules for various types of user input.
-type Validator interface {
-	// Validate checks input against defined validation rules.
-	// Returns an error if validation fails, nil if input is valid.
-	Validate(input string) error
-}

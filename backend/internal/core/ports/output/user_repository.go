@@ -1,9 +1,7 @@
-// Package output defines interfaces for user persistence operations.
-// It provides contracts for storage implementations handling user data management and security-sensitive operations.	
+// Package output defines persistence contracts for comments and users.
 package output
 
-// UserRepository defines the interface for user storage operations.
-// Implementations should handle user data persistence, password security, and credential verification.
+// UserRepository persists and retrieves user credentials.
 type UserRepository interface {
 	// UserExists checks if a username is already registered in the system.
 	// Returns true if the username exists in storage, false otherwise.
@@ -33,4 +31,10 @@ type UserRepository interface {
 		// - Invalid credentials
 		// - Storage persistence failures
 	SaveUser(username, password string) error
+
+	// GetID returns the numeric ID for a given username.
+    // Returns:
+    //   - int: user ID.
+    //   - error: non-nil if user not found or storage error.
+	GetID(username string) (int, error)
 }

@@ -1,12 +1,31 @@
-// Package middleware provides HTTP middleware components for request processing.
-// It includes authentication, logging, and other cross-cutting concerns.
+// Package middleware provides HTTP middleware components for cross-cutting concerns.
+// It includes authentication, logging, and context propagation utilities.
+// Middleware functions wrap HTTP handlers to perform tasks before and/or after
+// the main request processing.
 package middleware
 
 import (
+	"context"
 	"net/http"
 
 	securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
 )
+
+// contextKey is a private type used to define keys for context values.
+// Using a distinct type prevents collisions with other context keys.
+type contextKey string
+
+// userIDContextKey is the key under which the authenticated user's ID is stored
+// in the request context. It is unexported to prevent misuse.
+const userIDContextKey contextKey = "userID"
+
+// GetUserIDContextKey returns the context key used to retrieve the user ID
+// from an HTTP request's context. This allows handlers to extract the
+// authenticated user's ID from context:
+//    userID := r.Context().Value(middleware.GetUserIDContextKey()).(string)
+func GetUserIdContextKey() contextKey {
+	return userIDContextKey
+}
 
 // AuthOptions contains configuration options for the authentication middleware.
 // It allows for customization of authentication behavior, particularly which
@@ -23,53 +42,65 @@ type AuthOptions struct {
 // Returns a pointer to the newly created AuthOptions.
 func DefaultAuthOptions() *AuthOptions {
 	return &AuthOptions{
-		ExcludedPaths: []string{"/", "/login", "/register", "/css/", "/js/", "/assets/"},
+		ExcludedPaths: []string{
+			"/", 
+			"/login", 
+			"/register", 
+			"/comments", 
+			"/css/", 
+			"/js/", 
+			"/assets/"},
 	}
 }
 
-// AuthMiddleware creates a middleware that verifies user authentication through JWT tokens.
-// It intercepts HTTP requests, checks if the path requires authentication, and validates
-// the authentication token stored in cookies.
-//
-// The middleware follows these steps:
-//  1. Checks if the requested path is in the excluded paths list.
-//  2. For paths requiring authentication, verifies the presence of a "token" cookie.
-//  3. Validates the token using the security package.
-//  4. If authentication succeeds, passes control to the next handler.
-//  5. If authentication fails, returns a 401 Unauthorized response.
-//
+// AuthMiddleware returns an HTTP middleware that enforces authentication using JWT tokens stored in cookies. It wraps an existing http.Handler and performs the following logic:
+
+// 1. If the request path matches any of the patterns in opts.ExcludedPaths, the request is allowed to proceed without authentication.
+// 2. Otherwise, the middleware looks for a "token" cookie in the request.
+// 3. If the cookie is missing or empty, responds with 401 Unauthorized.
+// 4. Parses and validates the JWT token using the security_auth package.
+// 5. If token parsing fails (invalid or expired), responds with 401 Unauthorized.
+// 6. On successful validation, extracts the UserId from token claims, stores it in the request context under userIDContextKey, and calls the next handler.
+
 // Parameters:
-//   - options: Configuration options for authentication, including paths to exclude
-//
-// Returns a Middleware function that can be used in an HTTP handler chain.
+//   - opts: pointer to AuthOptions specifying paths to exclude from auth.
+
+// Returns:
+//   - Middleware: a function that transforms an http.Handler into a new one with authentication enforcement.
 func AuthMiddleware(options *AuthOptions) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Check if the path is excluded from authentication
+			// Check for excluded paths
 			for _, path := range options.ExcludedPaths {
+				// Exact match or prefix match for directory
 				if r.URL.Path == path || (path[len(path)-1] == '/' && len(r.URL.Path) >= len(path) && r.URL.Path[:len(path)] == path) {
 					next.ServeHTTP(w, r)
 					return
 				}
 			}
 
-			// Verify authentication by checking for token cookie
+			// Retrieve JWT token from cookie
 			cookie, err := r.Cookie("token")
 			if err != nil || cookie.Value == "" {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
 
-			// Validate the token using security package
+			// Validate token and extract claims
 			tokenString := cookie.Value
-			err = securityAuth.ValidateToken(tokenString)
+			claims, err := securityAuth.ParseTokenWithClaims(tokenString)
 			if err != nil {
 				http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
 				return
 			}
 
-			// Authentication successful, proceed to the next handler
-			next.ServeHTTP(w, r)
+			// Store user ID in context for downstream handlers
+			userID := claims.UserId
+			ctx := r.Context()
+			contextWithUser := context.WithValue(ctx, userIDContextKey, userID)
+			
+			// Continue processing with enriched context
+			next.ServeHTTP(w, r.WithContext(contextWithUser))
 		})
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/core/ports/input"
 	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/errors"
 	httpUtil "github.com/David-Alejandro-Jimenez/sale-watches/pkg/http"
+	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/http/cookies"
 )
 
 // RegisterHandler handles HTTP requests for user registration.
@@ -56,7 +57,7 @@ func (h *RegisterHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	// Determine if the environment is production to set secure cookie flags.
 	isProduction := os.Getenv("ENV") == "production"
-	httpUtil.SetAuthCookie(w, token, isProduction)
+	cookies.SetAuthCookie(w, token, isProduction)
 
 	// Send a JSON response indicating successful registration.
 	httpUtil.SendJSONResponse(w, http.StatusOK, map[string]string{

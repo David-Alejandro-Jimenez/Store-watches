@@ -1,6 +1,6 @@
 // Package http provides cookie configuration utilities with secure defaults and flexible options.
 // It implements a functional options pattern for creating and managing HTTP cookies securely, with special handling for authentication cookies and production environment considerations.
-package http
+package cookies
 
 import (
 	"net/http"

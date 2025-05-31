@@ -1,7 +1,7 @@
-// Package services provides implementations of input port interfaces for authentication.
+// Package service_auth provides implementations of input port interfaces for authentication.
 // It contains shared logic for validating credentials, checking user existence, and
 // generating JWT tokens.
-package services
+package service_auth
 
 import (
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/core/ports/input"
@@ -24,7 +24,7 @@ type BaseAuthService struct {
 
 // ValidateUserName checks the supplied username against the UserNameValidator.
 // Returns a ValidationError if the username is invalid.
-func (b *BaseAuthService) ValidateUserName(username string) error {
+func (b *BaseAuthService) ValidateUserName(username interface{}) error {
 	if err := b.UserNameValidator.Validate(username); err != nil {
 		return errors.NewValidationError(errors.ErrInvalidUsername)
 	}
@@ -33,7 +33,7 @@ func (b *BaseAuthService) ValidateUserName(username string) error {
 
 // ValidatePassword checks the supplied password against the PasswordValidator.
 // Returns a ValidationError if the password is invalid.
-func (b *BaseAuthService) ValidatePassword(password string) error {
+func (b *BaseAuthService) ValidatePassword(password interface{}) error {
 	if err := b.PasswordValidator.Validate(password); err != nil {
 		return errors.NewValidationError(errors.ErrInvalidPassword)
 	}
@@ -50,8 +50,8 @@ func (b *BaseAuthService) CheckUserExists(username string) (bool, error) {
 }
 
 // GenerateToken creates a signed JWT for the given username using the default JWT service. Returns the token string or an InternalError if token generation fails.
-func (b *BaseAuthService) GenerateToken(username string) (string, error) {
-	token, err := securityAuth.GenerateJWT(username)
+func (b *BaseAuthService) GenerateToken(userId int, username string) (string, error) {
+	token, err := securityAuth.GenerateJWT(userId, username)
 	if err != nil {
 		return "", errors.NewInternalError(errors.ErrTokenGeneration).WithError(err)
 	}

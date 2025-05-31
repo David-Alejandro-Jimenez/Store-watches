@@ -1,9 +1,11 @@
-// Package main is the entry point for the watch store API application.
-// It initializes all necessary components and starts the HTTP server.
+// Package main provides the entry point for the Watch Store API server.
+
+// It is responsible for loading configuration, initializing all application components, and starting the HTTP server to handle incoming API requests.
+
+// The application follows a clean architecture pattern, separating concerns into adapters, domain services, ports, and infrastructure components.
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,52 +14,60 @@ import (
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/adapters/secondary/repository"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/adapters/secondary/static"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/config"
-	"github.com/David-Alejandro-Jimenez/sale-watches/internal/core/domain/services"
+	"github.com/David-Alejandro-Jimenez/sale-watches/internal/core/domain/services/service_auth"
+	"github.com/David-Alejandro-Jimenez/sale-watches/internal/core/domain/services/service_comments"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/core/ports/input"
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/core/ports/output"
 	ratelimiter "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/rate_limiter"
 	securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 )
 
 // main is the application entry point.
+// It performs the following steps:
+// 1. Loads and validates application configuration.
+// 2. Initializes global security services (e.g., JWT).
+// 3. Establishes a database connection.
+// 4. Creates domain services and their dependencies (repositories, validators).
+// 5. Configures the HTTP router with endpoints and middleware.
+// 6. Starts listening on the configured port.
 
-// It loads the application configuration, initializes all required components such as database connections, services, adapters, and middleware, and finally starts the HTTP server on the configured port.
+// If any of these steps fails, main will log the error and exit the application.
 func main() {
-	// Load configuration
+	// Step 1: Load and validate configuration
 	appConfig := config.NewAppConfig()
 	appConfig.ValidateConfig()
 
-	// Initialize common services
+	// Step 2: Initialize global services (e.g., JWT auth)
 	initializeCommonServices(appConfig)
 
-	// Initialize database connection
+	// Step 3: Database setup
 	db, err := setupDatabase(appConfig)
 	if err != nil {
 		log.Fatalf("Error connecting to database: %v", err)
 	}
 	defer db.Close()
 
-	// Initialize services
+	// Step 4: Dependency injection for domain services
 	userRepo := setupUserRepository(db)
 	userServiceLogin := setupLoginService(userRepo)
 	userServiceRegister := setupRegisterService(userRepo)
-	commentService := setupCommentService(db)
+	commentGetService, commentAddService := setupCommentService(db)
 	rateHandler := setupRateLimiter(appConfig)
-
-	// Initialize static file adapter
 	staticFileAdapter := setupStaticFileAdapter(appConfig)
 
-	// Configure router
+	// Step 5: Configure HTTP router with handlers and middleware
 	router := primaryHttp.NewRouter(
 		userServiceLogin,
 		userServiceRegister,
-		commentService,
+		commentGetService,
+		commentAddService,
 		rateHandler,
 		staticFileAdapter,
 	)
 
-	// Start server
+	// Step 6: Start HTTP server	
 	port := appConfig.GetPort()
 	log.Printf("Server started at http://localhost:%s", port)
 	log.Printf("Serving static files from: %s", staticFileAdapter.GetStaticDir())
@@ -73,8 +83,8 @@ func initializeCommonServices(appConfig *config.AppConfig) {
 
 // setupDatabase establishes a connection to the MySQL database.
 
-// It uses configuration values such as username, password, host, and database name to construct the DSN string and open the connection. It returns a *sql.DB instance and an error if the connection fails.
-func setupDatabase(appConfig *config.AppConfig) (*sql.DB, error) {
+// It uses configuration values such as username, password, host, and database name to construct the DSN string and open the connection. It returns a *sqlx.DB instance and an error if the connection fails.
+func setupDatabase(appConfig *config.AppConfig) (*sqlx.DB, error) {
 	cfg := appConfig.GetConfig()
 	user := cfg.GetString("database.user")
 	password := cfg.GetString("database.password")
@@ -83,13 +93,13 @@ func setupDatabase(appConfig *config.AppConfig) (*sql.DB, error) {
 	dbName := cfg.GetString("database.name")
 	
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true", user, password, host, port, dbName)
-	return sql.Open("mysql", dsn)
+	return sqlx.Connect("mysql", dsn)
 }
 
 // setupUserRepository returns an implementation of the UserRepository interface.
 
 // It sets up dependencies for user authentication such as salt generation and password hashing and injects them into the SQL-based repository.
-func setupUserRepository(db *sql.DB) output.UserRepository {
+func setupUserRepository(db *sqlx.DB) output.UserRepository {
 	saltGenerator := securityAuth.RandomSaltGenerator{}
 	hasher := securityAuth.BcryptHasher{}
 	return repository.NewSQLUserRepository(db, saltGenerator, hasher)
@@ -100,29 +110,34 @@ func setupUserRepository(db *sql.DB) output.UserRepository {
 // This service validates credentials and authenticates users.
 // It relies on validators for username and password and uses the user repository to query user data.
 func setupLoginService(userRepo output.UserRepository) input.UserServiceLogin {
-	userNameValidator := &services.UserNameValidator{}
-	passwordValidator := &services.PasswordValidator{}
-	return services.NewUserLoginService(userRepo, userNameValidator, passwordValidator)
+	userNameValidator := &service_auth.UserNameValidator{}
+	passwordValidator := &service_auth.PasswordValidator{}
+	return service_auth.NewUserLoginService(userRepo, userNameValidator, passwordValidator)
 }
 
 // setupRegisterService initializes and returns the user registration service.
 // It validates user input and stores new users in the database using the provided repository.
 func setupRegisterService(userRepo output.UserRepository) input.UserServiceRegister {
-	userNameValidator := &services.UserNameValidator{}
-	passwordValidator := &services.PasswordValidator{}
-	return services.NewUserRegisterService(userRepo, userNameValidator, passwordValidator)
+	userNameValidator := &service_auth.UserNameValidator{}
+	passwordValidator := &service_auth.PasswordValidator{}
+	return service_auth.NewUserRegisterService(userRepo, userNameValidator, passwordValidator)
 }
 
-// setupCommentService returns an implementation of the CommentService interface.
+// setupCommentService initializes services for retrieving and creating user comments.
+// This binds the comment repository and validation rules into service implementations.
+// Parameters:
+//   - db: active *sqlx.DB connection
 
-// Currently, this function returns nil. The comment service is a planned feature and will be implemented in the future to support user comments.
-func setupCommentService(db *sql.DB) input.CommentService {
-	// Comment service implementation will be added in the future
-	return nil
+// Returns:
+//   - input.CommentGetService: service interface to fetch comments
+//   - input.CommentAddService: service interface to add new comments
+func setupCommentService(db *sqlx.DB) (input.CommentGetService, input.CommentAddService) {
+	commentRepo := repository.NewSqlCommentRepository(db)
+	commentValidator := &service_comments.CommentValidator{}
+	return  service_comments.NewCommentGetService(commentRepo, commentValidator), service_comments.NewCommentAddService(commentRepo, commentValidator)
 }
 
 // setupRateLimiter configures and returns a rate limiting handler.
-
 // It uses rate limit settings (requests per second and burst) defined in the application configuration to protect the API against abuse or DoS attacks.
 func setupRateLimiter(appConfig *config.AppConfig) ratelimiter.RateLimiterHandler {
 	limiterConfig := appConfig.GetRateLimitConfig()
@@ -130,7 +145,7 @@ func setupRateLimiter(appConfig *config.AppConfig) ratelimiter.RateLimiterHandle
 }
 
 // setupStaticFileAdapter creates and returns an adapter for serving static files.
-//
+
 // The adapter serves assets such as images, stylesheets, or JavaScript files
 // from a directory defined in the configuration.
 func setupStaticFileAdapter(appConfig *config.AppConfig) output.StaticFilePort {

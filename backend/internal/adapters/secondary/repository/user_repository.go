@@ -8,13 +8,14 @@ import (
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/core/ports/output"
 	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/errors"
 	securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
+	"github.com/jmoiron/sqlx"
 )
 
 // SQLUserRepository implements the UserRepository interface using a SQL database.
 
-// It requires a *sql.DB for database operations, a Generator for creating salts, and a Hasher for hashing passwords.
+// It requires a *sqlx.DB for database operations, a Generator for creating salts, and a Hasher for hashing passwords.
 type SQLUserRepository struct {
-	db            *sql.DB
+	db            *sqlx.DB
 	saltGenerator securityAuth.Generator
 	hasher        securityAuth.Hasher
 }
@@ -23,7 +24,7 @@ type SQLUserRepository struct {
 
 // It logs a fatal error if any dependency is nil, ensuring that the repository always has a valid database connection, salt generator, and hasher.
 // Returns an output.UserRepository ready for use.
-func NewSQLUserRepository(db *sql.DB, saltGenerator securityAuth.Generator, hasher securityAuth.Hasher) output.UserRepository {
+func NewSQLUserRepository(db *sqlx.DB, saltGenerator securityAuth.Generator, hasher securityAuth.Hasher) output.UserRepository {
 	if db == nil {
 		log.Fatal(errors.NewInternalError(errors.ErrDatabaseConnection).Error())
 	}
@@ -113,4 +114,31 @@ func (r *SQLUserRepository) SaveUser(username, password string) error {
 		return errors.NewInternalError(errors.ErrDatabaseInsert).WithError(err)
 	}
 	return nil
+}
+
+// GetID retrieves the unique user ID for a given username from the database.
+// It returns a NotFoundError if no matching user is found, or an InternalError if any other database error occurs.
+
+// Parameters:
+//   - username: the username string to look up in the User_Registration table.
+
+// Returns:
+//   - int: the UserID corresponding to the provided username.
+//   - error: non-nil if the user is not found or a database error occurs.
+func (r *SQLUserRepository) GetID(username string) (int, error) {
+	var id int
+	query := "SELECT UserID FROM User_Registration WHERE UserName = ?"
+
+	// Execute the query and scan the single result into id.
+	err := r.db.QueryRow(query, username).Scan(&id)
+	if err != nil {
+		// No matching row indicates user does not exist.
+		if err == sql.ErrNoRows {
+			return 0, errors.NewNotFoundError(errors.ErrUserNotFound)
+		}
+		// Wrap other errors as InternalError for upstream handling.
+		return 0, errors.NewInternalError(errors.ErrDatabaseQuery).WithError(err)
+	}
+	// Return the found user ID.
+	return id, nil
 }

@@ -1,5 +1,5 @@
-// Package services provides implementations of input port interfaces for authentication services.
-package services
+// Package service_auth provides implementations of input port interfaces for authentication services.
+package service_auth
 
 import (
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/core/domain/models"
@@ -75,6 +75,11 @@ func (l *UserLoginService) Login(account models.Account) (string, error) {
 		return "", err
 	}
 
+	userId, err := l.UserRepo.GetID(account.UserName)
+	if err != nil {
+		return "", err
+	}
+
 	// 4. Verify password by hashing provided password with salt
 	passwordWithSalt := append([]byte(account.Password), salt...)
 	err = bcrypt.CompareHashAndPassword([]byte(storedHash), passwordWithSalt)
@@ -83,5 +88,5 @@ func (l *UserLoginService) Login(account models.Account) (string, error) {
 	}
 
 	// 5. Generate JWT token
-	return l.GenerateToken(account.UserName)
+	return l.GenerateToken(userId, account.UserName)
 }

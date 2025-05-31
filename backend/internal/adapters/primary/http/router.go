@@ -1,5 +1,5 @@
 // Package http implements HTTP handlers and the routing configuration for the sale-watches application.
-// This file contains the RouterConfig implementation and the NewRouter factory function, which wires up all the necessary dependencies (handlers, middlewares, rate limiters, etc.) to create a fully configured router.
+// It provides the RouterConfig type and NewRouter factory function, which wire up handlers, middlewares, rate limiters, and static file serving to produce a fully configured *mux.Router* ready to handle API requests.
 package http
 
 import (
@@ -17,109 +17,146 @@ type RouterConfiguration interface {
 	SetupRoutes(router *mux.Router)
 }
 
-// RouterConfig implements the RouterConfiguration interface.
-// It holds all the dependencies required to configure the application's routes.
+// RouterConfig holds dependencies required to set up application routes.
+// Fields correspond to handlers for each endpoint, middleware manager, and rate limiter components.
+//
+// Fields:
+//   - IPExtractor: extracts client IP from *http.Request* for rate limiting.
+//   - RateLimiter: handles request rate limiting based on extracted IP.
+//   - LoginHandler: processes user login requests.
+//   - RegisterHandler: processes user registration requests.
+//   - CommentsGetHandler: handles retrieval of comments.
+//   - CommentsAddHandler: handles creation of new comments.
+//   - MainPageHandler: serves the application's main page.
+//   - StaticFileHandler: serves static assets like CSS/JS/images.
+//   - MiddlewareManager: orchestrates application of global and route-specific middleware.
 type RouterConfig struct {
 	IPExtractor       ratelimiter.IPExtractor
 	RateLimiter       ratelimiter.RateLimiterHandler
 	LoginHandler      *LoginHandler
 	RegisterHandler   *RegisterHandler
-	CommentsHandler   *CommentsHandler
+	CommentsGetHandler   *CommentsGetHandler
+	CommentsAddHandler *CommentsAddHandler
 	MainPageHandler   *MainPageHandler
 	StaticFileHandler *StaticFileHandler
 	MiddlewareManager *middleware.MiddlewareManager
 }
 
-// SetupRoutes configures all application routes on the given mux.Router.
+// SetupRoutes registers all application endpoints on the given router and applies route-specific middleware for authentication and rate limiting.
+// Routes include:
+//   - Static files (CSS, JS, images)
+//   - Public endpoints: GET /, POST /register, POST /login
+//   - Protected endpoints: GET /comments, POST /comments/newComments
 
-// It registers routes for static files, public endpoints (main page, register, login) and protected routes (e.g., comments). Additionally, it applies the rate limiting middleware to each route via the MiddlewareManager.
+// Each route is wrapped with authentication and rate limiting via the MiddlewareManager.Apply method.
+
+// Parameters:
+//   - router: *mux.Router instance to configure routes on.
 func (c *RouterConfig) SetupRoutes(router *mux.Router) {
-	// Configure routes for static files.
+	// 1. Register static file serving routes
 	c.StaticFileHandler.RegisterRoutes(router)
 
-	// Create the rate limiting middleware.
-	rateLimitMiddleware := middleware.RateLimitMiddleware(c.IPExtractor, c.RateLimiter)
+	// 2. Prepare middleware for rate limiting and authentication
+	rateLimitMW := middleware.RateLimitMiddleware(c.IPExtractor, c.RateLimiter)
+	authMW := middleware.AuthMiddleware(middleware.DefaultAuthOptions())
 
-	// Configure public routes.
+	// 3. Public routes
 	router.Handle("/", c.MiddlewareManager.Apply(
 		http.HandlerFunc(c.MainPageHandler.Handle),
-		rateLimitMiddleware,
+		authMW, rateLimitMW,
 	)).Methods("GET")
 
 	router.Handle("/register", c.MiddlewareManager.Apply(
 		http.HandlerFunc(c.RegisterHandler.Handle),
-		rateLimitMiddleware,
+		authMW, rateLimitMW,
 	)).Methods("POST")
 
 	router.Handle("/login", c.MiddlewareManager.Apply(
 		http.HandlerFunc(c.LoginHandler.Handle),
-		rateLimitMiddleware,
+		authMW, rateLimitMW,
 	)).Methods("POST")
 
-	// Configure protected routes (with authentication and rate limiting).
 	router.Handle("/comments", c.MiddlewareManager.Apply(
-		http.HandlerFunc(c.CommentsHandler.Handle),
-		rateLimitMiddleware,
+		http.HandlerFunc(c.CommentsGetHandler.Handle),
+		authMW, rateLimitMW,
 	)).Methods("GET")
+
+	// 4. Protected routes
+	router.Handle("/comments/newComments", c.MiddlewareManager.Apply(
+		http.HandlerFunc(c.CommentsAddHandler.Handle),
+		authMW, rateLimitMW, 
+	)).Methods("POST")
 }
 
-// NewRouter creates and returns a new mux.Router with all dependencies injected and configured.
+// NewRouter constructs and returns a *mux.Router configured with all application routes, handlers, and global middleware.
+// It performs the following steps:
+//  1. Instantiate handler objects for login, registration, comments, etc.
+//  2. Set up the MainPageHandler with the static directory path.
+//  3. Create and configure a MiddlewareManager, adding global middleware
+//     for logging, timing, and CORS.
+//  4. Build a RouterConfig with dependencies and call SetupRoutes.
 
-// It instantiates the necessary HTTP handlers (LoginHandler, RegisterHandler, CommentsHandler, MainPageHandler, StaticFileHandler), configures middleware (logging, timing, CORS, rate limiting), and sets up all the routes via a RouterConfig. The function returns a ready-to-use router for the application.
+// Parameters:
+//   - userServiceLogin: service for authenticating users on login.
+//   - userServiceRegister: service for registering new users.
+//   - commentGetService: service for fetching existing comments.
+//   - commentAddService: service for adding new comments.
+//   - rateHandler: rate limiting handler middleware for DoS protection.
+//   - staticFileService: adapter for serving static files from disk.
+
+// Returns:
+//   - *mux.Router: fully configured router ready to be passed to http.ListenAndServe.
 func NewRouter(
 	userServiceLogin input.UserServiceLogin,
 	userServiceRegister input.UserServiceRegister,
-	commentService input.CommentService,
+	commentGetService input.CommentGetService,
+	commentAddService input.CommentAddService,
 	rateHandler ratelimiter.RateLimiterHandler,
 	staticFileService output.StaticFilePort,
 ) *mux.Router {
+	// 1. Initialize a new router
 	router := mux.NewRouter()
 
-	// Create handler instances.
+	// 2. Instantiate HTTP handlers with injected domain services
 	loginHandler := NewLoginHandler(userServiceLogin)
 	registerHandler := NewRegisterHandler(userServiceRegister)
-	commentsHandler := NewCommentsHandler(commentService)
+	commentsGetHandler := NewCommentsGetHandler(commentGetService)
+	commentsAddHandler := NewCommentAddsHandler(commentAddService)
 	mainPageHandler := NewMainPageHandler()
 	staticFileHandler := NewStaticFileHandler(staticFileService)
 
-	// Configure the main page handler with the static directory.
+	// 3. Configure main page handler with static directory
 	mainPageHandler.SetStaticDir(staticFileService.GetStaticDir())
 
-	// Create and configure the MiddlewareManager.
+	// 4. Create and configure MiddlewareManager
 	middlewareManager := middleware.NewMiddlewareManager()
-
-	// Create custom timing configuration.
 	timingConfig := middleware.DefaultTimingConfig()
+	timingConfig.WarningThreshold = 200 * 1000 * 1000 // 200 milliseconds
 
-	// Set the timing warning threshold to 200ms.
-	timingConfig.WarningThreshold = 200 * 1000 * 1000 // 200ms in nanoseconds
-
-	// Create custom CORS configuration.
 	corsConfig := middleware.DefaultCORSConfig()
-	// Additional CORS settings can be customized here, e.g.:
-	// corsConfig.AllowedOrigins = []string{"https://domain.com"}
+	// corsCfg.AllowedOrigins = []string{"https://example.com"} // customize as needed
 
-	// Add global middlewares.
+	// Add global middleware: logging, timing, CORS
 	middlewareManager.AddGlobal(middleware.LoggingMiddleware)
 	middlewareManager.AddGlobal(middleware.TimingMiddleware(timingConfig))
 	middlewareManager.AddGlobal(middleware.CORSMiddleware(corsConfig))
-
-	// Apply global middlewares to the router.
+	// Apply global middleware to all routes
 	middlewareManager.ApplyToRouter(router)
 
-	// Create RouterConfig with all dependencies.
+	// 5. Build RouterConfig with dependencies
 	config := &RouterConfig{
 		IPExtractor:       &ratelimiter.DefaultIPExtractor{},
 		RateLimiter:       rateHandler,
 		LoginHandler:      loginHandler,
 		RegisterHandler:   registerHandler,
-		CommentsHandler:   commentsHandler,
+		CommentsGetHandler:   commentsGetHandler,
+		CommentsAddHandler: commentsAddHandler,
 		MainPageHandler:   mainPageHandler,
 		StaticFileHandler: staticFileHandler,
 		MiddlewareManager: middlewareManager,
 	}
 
-	// Configure routes on the router.
+	// 6. Register routes on router
 	config.SetupRoutes(router)
 	return router
 }

@@ -1,7 +1,7 @@
-// Package services provides input‑port implementations for validating user credentials.
+// Package service_auth provides input‑port implementations for validating user credentials.
 
 // It includes username and password validators enforcing basic length and character rules.
-package services
+package service_auth
 
 import (
 	"fmt"
@@ -24,7 +24,8 @@ type UserNameValidator struct{}
 //   • at least minUserNameLength characters
 
 // Returns a formatted error describing the violation.
-func (c *UserNameValidator) Validate(username string) error {
+func (c *UserNameValidator) Validate(input interface{}) error {
+	username := input.(string)
 	if username == "" {
 		return fmt.Errorf("you cannot enter empty fields")
 	}
@@ -49,7 +50,8 @@ type PasswordValidator struct{}
 //   • contains at least one punctuation or symbol (unicode.IsPunct or unicode.IsSymbol)
 
 // Returns a formatted error for the first unmet requirement.
-func (p *PasswordValidator) Validate(password string) error {
+func (p *PasswordValidator) Validate(input interface{}) error {
+	password := input.(string)
 	if password == "" {
 		return fmt.Errorf("you cannot enter empty fields")
 	}

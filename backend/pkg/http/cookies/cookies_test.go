@@ -1,4 +1,4 @@
-package http_test
+package cookies_test
 
 import (
 	"net/http"
@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	httputil "github.com/David-Alejandro-Jimenez/sale-watches/pkg/http"
+	"github.com/David-Alejandro-Jimenez/sale-watches/pkg/http/cookies"
 )
 
 func TestWithValue(t *testing.T) {
-	config := httputil.CookieConfig{}
+	config := cookies.CookieConfig{}
 
-	option := httputil.WithValue("test-value")
+	option := cookies.WithValue("test-value")
 	option(&config)
 
 	if config.Value != "test-value" {
@@ -21,10 +21,10 @@ func TestWithValue(t *testing.T) {
 }
 
 func TestWithMaxAge(t *testing.T) {
-	config := httputil.CookieConfig{}
+	config := cookies.CookieConfig{}
 
 	expectedDuration := 1 * time.Hour
-	option := httputil.WithMaxAge(expectedDuration)
+	option := cookies.WithMaxAge(expectedDuration)
 	option(&config)
 
 	if config.MaxAge != expectedDuration {
@@ -33,16 +33,16 @@ func TestWithMaxAge(t *testing.T) {
 }
 
 func TestWithHttpOnly(t *testing.T) {
-	config := httputil.CookieConfig{}
+	config := cookies.CookieConfig{}
 
-	option := httputil.WithHttpOnly(true)
+	option := cookies.WithHttpOnly(true)
 	option(&config)
 
 	if !config.HttpOnly {
 		t.Errorf("WithHttpOnly did not set the flag correctly. Expected: %v, Got: %v", true, config.HttpOnly)
 	}
 
-	option = httputil.WithHttpOnly(false)
+	option = cookies.WithHttpOnly(false)
 	option(&config)
 
 	if config.HttpOnly {
@@ -51,10 +51,10 @@ func TestWithHttpOnly(t *testing.T) {
 }
 
 func TestWithPath(t *testing.T) {
-	config := httputil.CookieConfig{}
+	config := cookies.CookieConfig{}
 
 	expectedPath := "/test"
-	option := httputil.WithPath(expectedPath)
+	option := cookies.WithPath(expectedPath)
 	option(&config)
 
 	if config.Path != expectedPath {
@@ -63,16 +63,16 @@ func TestWithPath(t *testing.T) {
 }
 
 func TestWithSecure(t *testing.T) {
-	config := httputil.CookieConfig{}
+	config := cookies.CookieConfig{}
 
-	option := httputil.WithSecure(true)
+	option := cookies.WithSecure(true)
 	option(&config)
 
 	if !config.Secure {
 		t.Errorf("WithSecure did not set the flag correctly. Expected: %v, Got: %v", true, config.Secure)
 	}
 
-	option = httputil.WithSecure(false)
+	option = cookies.WithSecure(false)
 	option(&config)
 
 	if config.Secure {
@@ -81,10 +81,10 @@ func TestWithSecure(t *testing.T) {
 }
 
 func TestWithSameSite(t *testing.T) {
-	config := httputil.CookieConfig{}
+	config := cookies.CookieConfig{}
 
 	expectedSameSite := http.SameSiteStrictMode
-	option := httputil.WithSameSite(expectedSameSite)
+	option := cookies.WithSameSite(expectedSameSite)
 	option(&config)
 
 	if config.SameSite != expectedSameSite {
@@ -96,14 +96,14 @@ func TestNewCookieConfig(t *testing.T) {
 	testCases := []struct {
 		name           string
 		cookieName     string
-		options        []httputil.CookieOption
-		expectedConfig httputil.CookieConfig
+		options        []cookies.CookieOption
+		expectedConfig cookies.CookieConfig
 	}{
 		{
 			name:       "Default configuration",
 			cookieName: "test-cookie",
-			options:    []httputil.CookieOption{},
-			expectedConfig: httputil.CookieConfig{
+			options:    []cookies.CookieOption{},
+			expectedConfig: cookies.CookieConfig{
 				Name:     "test-cookie",
 				Path:     "/",
 				MaxAge:   24 * time.Hour,
@@ -115,15 +115,15 @@ func TestNewCookieConfig(t *testing.T) {
 		{
 			name:       "With custom options",
 			cookieName: "custom-cookie",
-			options: []httputil.CookieOption{
-				httputil.WithValue("custom-value"),
-				httputil.WithMaxAge(1 * time.Hour),
-				httputil.WithPath("/custom"),
-				httputil.WithHttpOnly(false),
-				httputil.WithSecure(true),
-				httputil.WithSameSite(http.SameSiteStrictMode),
+			options: []cookies.CookieOption{
+				cookies.WithValue("custom-value"),
+				cookies.WithMaxAge(1 * time.Hour),
+				cookies.WithPath("/custom"),
+				cookies.WithHttpOnly(false),
+				cookies.WithSecure(true),
+				cookies.WithSameSite(http.SameSiteStrictMode),
 			},
-			expectedConfig: httputil.CookieConfig{
+			expectedConfig: cookies.CookieConfig{
 				Name:     "custom-cookie",
 				Value:    "custom-value",
 				Path:     "/custom",
@@ -137,7 +137,7 @@ func TestNewCookieConfig(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			config := httputil.NewCookieConfig(tc.cookieName, tc.options...)
+			config := cookies.NewCookieConfig(tc.cookieName, tc.options...)
 
 			if config.Name != tc.expectedConfig.Name {
 				t.Errorf("Incorrect name. Expected: %s, Got: %s", tc.expectedConfig.Name, config.Name)
@@ -169,35 +169,35 @@ func TestNewAuthCookieConfig(t *testing.T) {
 		name           string
 		token          string
 		isProduction   bool
-		options        []httputil.CookieOption
+		options        []cookies.CookieOption
 		expectedSecure bool
 	}{
 		{
 			name:           "Development environment",
 			token:          "test-token",
 			isProduction:   false,
-			options:        []httputil.CookieOption{},
+			options:        []cookies.CookieOption{},
 			expectedSecure: false,
 		},
 		{
 			name:           "Production environment",
 			token:          "prod-token",
 			isProduction:   true,
-			options:        []httputil.CookieOption{},
+			options:        []cookies.CookieOption{},
 			expectedSecure: true,
 		},
 		{
 			name:           "Custom options",
 			token:          "custom-token",
 			isProduction:   false,
-			options:        []httputil.CookieOption{httputil.WithSecure(true)},
+			options:        []cookies.CookieOption{cookies.WithSecure(true)},
 			expectedSecure: true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			config := httputil.NewAuthCookieConfig(tc.token, tc.isProduction, tc.options...)
+			config := cookies.NewAuthCookieConfig(tc.token, tc.isProduction, tc.options...)
 
 			if config.Name != "token" {
 				t.Errorf("Incorrect name. Expected: %s, Got: %s", "token", config.Name)
@@ -227,7 +227,7 @@ func TestNewAuthCookieConfig(t *testing.T) {
 func TestSetCookie(t *testing.T) {
 	w := httptest.NewRecorder()
 
-	config := httputil.CookieConfig{
+	config := cookies.CookieConfig{
 		Name:     "test-cookie",
 		Value:    "test-value",
 		MaxAge:   1 * time.Hour,
@@ -237,7 +237,7 @@ func TestSetCookie(t *testing.T) {
 		SameSite: http.SameSiteStrictMode,
 	}
 
-	httputil.SetCookie(w, config)
+	cookies.SetCookie(w, config)
 
 	cookies := w.Result().Cookies()
 	if len(cookies) != 1 {
@@ -279,25 +279,25 @@ func TestSetAuthCookie(t *testing.T) {
 		name         string
 		token        string
 		isProduction bool
-		options      []httputil.CookieOption
+		options      []cookies.CookieOption
 	}{
 		{
 			name:         "Authentication cookie in development",
 			token:        "test-token",
 			isProduction: false,
-			options:      []httputil.CookieOption{},
+			options:      []cookies.CookieOption{},
 		},
 		{
 			name:         "Authentication cookie in production",
 			token:        "prod-token",
 			isProduction: true,
-			options:      []httputil.CookieOption{},
+			options:      []cookies.CookieOption{},
 		},
 		{
 			name:         "Authentication cookie with custom options",
 			token:        "custom-token",
 			isProduction: false,
-			options:      []httputil.CookieOption{httputil.WithMaxAge(2 * time.Hour)},
+			options:      []cookies.CookieOption{cookies.WithMaxAge(2 * time.Hour)},
 		},
 	}
 
@@ -305,7 +305,7 @@ func TestSetAuthCookie(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
 
-			httputil.SetAuthCookie(w, tc.token, tc.isProduction, tc.options...)
+			cookies.SetAuthCookie(w, tc.token, tc.isProduction, tc.options...)
 
 			cookies := w.Result().Cookies()
 			if len(cookies) != 1 {
@@ -332,7 +332,7 @@ func TestSetAuthCookie(t *testing.T) {
 func TestClearCookie(t *testing.T) {
 	w := httptest.NewRecorder()
 
-	config := httputil.CookieConfig{
+	config := cookies.CookieConfig{
 		Name:     "test-cookie",
 		Value:    "",
 		MaxAge:   -1,
@@ -340,7 +340,7 @@ func TestClearCookie(t *testing.T) {
 		HttpOnly: true,
 	}
 
-	httputil.SetCookie(w, config)
+	cookies.SetCookie(w, config)
 
 	cookies := w.Result().Cookies()
 	if len(cookies) != 1 {
@@ -365,31 +365,31 @@ func TestClearCookie(t *testing.T) {
 func ExampleSetAuthCookie() {
 	w := httptest.NewRecorder()
 
-	httputil.SetAuthCookie(w, "user-token", false)
+	cookies.SetAuthCookie(w, "user-token", false)
 }
 
 func ExampleNewCookieConfig_userPreferences() {
 	w := httptest.NewRecorder()
 
-	config := httputil.NewCookieConfig("preferences",
-		httputil.WithValue("theme=dark"),
-		httputil.WithMaxAge(30*24*time.Hour),
-		httputil.WithHttpOnly(false),
+	config := cookies.NewCookieConfig("preferences",
+		cookies.WithValue("theme=dark"),
+		cookies.WithMaxAge(30*24*time.Hour),
+		cookies.WithHttpOnly(false),
 	)
 
-	httputil.SetCookie(w, config)
+	cookies.SetCookie(w, config)
 }
 
 func ExampleNewCookieConfig_secureCookie() {
 	w := httptest.NewRecorder()
 
-	config := httputil.NewCookieConfig("secure-data",
-		httputil.WithValue("sensitive-information"),
-		httputil.WithMaxAge(1*time.Hour),
-		httputil.WithHttpOnly(true),
-		httputil.WithSecure(true),
-		httputil.WithSameSite(http.SameSiteStrictMode),
+	config := cookies.NewCookieConfig("secure-data",
+		cookies.WithValue("sensitive-information"),
+		cookies.WithMaxAge(1*time.Hour),
+		cookies.WithHttpOnly(true),
+		cookies.WithSecure(true),
+		cookies.WithSameSite(http.SameSiteStrictMode),
 	)
 
-	httputil.SetCookie(w, config)
+	cookies.SetCookie(w, config)
 }

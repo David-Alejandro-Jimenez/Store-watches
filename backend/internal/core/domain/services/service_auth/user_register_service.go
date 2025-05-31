@@ -1,5 +1,5 @@
-// Package services provides implementations of the core input ports for authentication flows.
-package services
+// Package service_auth provides implementations of the core input ports for authentication flows.
+package service_auth
 
 import (
 	"github.com/David-Alejandro-Jimenez/sale-watches/internal/core/domain/models"
@@ -69,11 +69,17 @@ func (r *UserRegisterService) Register(account models.Account) (string, error) {
 		return "", errors.NewConflictError(errors.ErrUserAlreadyExists)
 	}
 
+	
 	// 4. Persist the new user with salted+hashed password
 	if err := r.UserRepo.SaveUser(account.UserName, account.Password); err != nil {
 		return "", err
 	}
+	
+	userId, err := r.UserRepo.GetID(account.UserName)
+	if err != nil {
+		return "", err
+	}
 
 	// 5. Issue a JWT token for the new user
-	return r.GenerateToken(account.UserName)
+	return r.GenerateToken(userId, account.UserName)
 }
