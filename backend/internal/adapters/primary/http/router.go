@@ -31,15 +31,15 @@ type RouterConfiguration interface {
 //   - StaticFileHandler: serves static assets like CSS/JS/images.
 //   - MiddlewareManager: orchestrates application of global and route-specific middleware.
 type RouterConfig struct {
-	IPExtractor       ratelimiter.IPExtractor
-	RateLimiter       ratelimiter.RateLimiterHandler
-	LoginHandler      *LoginHandler
-	RegisterHandler   *RegisterHandler
-	CommentsGetHandler   *CommentsGetHandler
+	IPExtractor        ratelimiter.IPExtractor
+	RateLimiter        ratelimiter.RateLimiterHandler
+	LoginHandler       *LoginHandler
+	RegisterHandler    *RegisterHandler
+	CommentsGetHandler *CommentsGetHandler
 	CommentsAddHandler *CommentsAddHandler
-	MainPageHandler   *MainPageHandler
-	StaticFileHandler *StaticFileHandler
-	MiddlewareManager *middleware.MiddlewareManager
+	MainPageHandler    *MainPageHandler
+	StaticFileHandler  *StaticFileHandler
+	MiddlewareManager  *middleware.MiddlewareManager
 }
 
 // SetupRoutes registers all application endpoints on the given router and applies route-specific middleware for authentication and rate limiting.
@@ -84,7 +84,7 @@ func (c *RouterConfig) SetupRoutes(router *mux.Router) {
 	// 4. Protected routes
 	router.Handle("/comments/newComments", c.MiddlewareManager.Apply(
 		http.HandlerFunc(c.CommentsAddHandler.Handle),
-		authMW, rateLimitMW, 
+		authMW, rateLimitMW,
 	)).Methods("POST")
 }
 
@@ -140,20 +140,19 @@ func NewRouter(
 	middlewareManager.AddGlobal(middleware.LoggingMiddleware)
 	middlewareManager.AddGlobal(middleware.TimingMiddleware(timingConfig))
 	middlewareManager.AddGlobal(middleware.CORSMiddleware(corsConfig))
-	// Apply global middleware to all routes
 	middlewareManager.ApplyToRouter(router)
 
 	// 5. Build RouterConfig with dependencies
 	config := &RouterConfig{
-		IPExtractor:       &ratelimiter.DefaultIPExtractor{},
-		RateLimiter:       rateHandler,
-		LoginHandler:      loginHandler,
-		RegisterHandler:   registerHandler,
-		CommentsGetHandler:   commentsGetHandler,
+		IPExtractor:        &ratelimiter.DefaultIPExtractor{},
+		RateLimiter:        rateHandler,
+		LoginHandler:       loginHandler,
+		RegisterHandler:    registerHandler,
+		CommentsGetHandler: commentsGetHandler,
 		CommentsAddHandler: commentsAddHandler,
-		MainPageHandler:   mainPageHandler,
-		StaticFileHandler: staticFileHandler,
-		MiddlewareManager: middlewareManager,
+		MainPageHandler:    mainPageHandler,
+		StaticFileHandler:  staticFileHandler,
+		MiddlewareManager:  middlewareManager,
 	}
 
 	// 6. Register routes on router

@@ -100,9 +100,8 @@ func setupDatabase(appConfig *config.AppConfig) (*sqlx.DB, error) {
 
 // It sets up dependencies for user authentication such as salt generation and password hashing and injects them into the SQL-based repository.
 func setupUserRepository(db *sqlx.DB) output.UserRepository {
-	saltGenerator := securityAuth.RandomSaltGenerator{}
 	hasher := securityAuth.BcryptHasher{}
-	return repository.NewSQLUserRepository(db, saltGenerator, hasher)
+	return repository.NewSQLUserRepository(db, hasher)
 }
 
 // setupLoginService initializes and returns the user login service.

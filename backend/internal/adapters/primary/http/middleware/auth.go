@@ -7,6 +7,7 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	securityAuth "github.com/David-Alejandro-Jimenez/sale-watches/pkg/security/security_auth"
 )
@@ -22,7 +23,8 @@ const userIDContextKey contextKey = "userID"
 // GetUserIDContextKey returns the context key used to retrieve the user ID
 // from an HTTP request's context. This allows handlers to extract the
 // authenticated user's ID from context:
-//    userID := r.Context().Value(middleware.GetUserIDContextKey()).(string)
+//
+//	userID := r.Context().Value(middleware.GetUserIDContextKey()).(string)
 func GetUserIdContextKey() contextKey {
 	return userIDContextKey
 }
@@ -43,12 +45,12 @@ type AuthOptions struct {
 func DefaultAuthOptions() *AuthOptions {
 	return &AuthOptions{
 		ExcludedPaths: []string{
-			"/", 
-			"/login", 
-			"/register", 
-			"/comments", 
-			"/css/", 
-			"/js/", 
+			"/",
+			"/login",
+			"/comments",
+			"/register",
+			"/css/",
+			"/js/",
 			"/assets/"},
 	}
 }
@@ -70,23 +72,30 @@ func DefaultAuthOptions() *AuthOptions {
 func AuthMiddleware(options *AuthOptions) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Check for excluded paths
-			for _, path := range options.ExcludedPaths {
-				// Exact match or prefix match for directory
-				if r.URL.Path == path || (path[len(path)-1] == '/' && len(r.URL.Path) >= len(path) && r.URL.Path[:len(path)] == path) {
+			for _, excludedPath := range options.ExcludedPaths {
+				if excludedPath == "/" {
+					if r.URL.Path == "/" {
+						next.ServeHTTP(w, r)
+						return
+					}
+					continue
+				}
+
+				if r.URL.Path == excludedPath {
+					next.ServeHTTP(w, r)
+					return
+				}
+				if strings.HasSuffix(excludedPath, "/") && strings.HasPrefix(r.URL.Path, excludedPath) {
 					next.ServeHTTP(w, r)
 					return
 				}
 			}
-
-			// Retrieve JWT token from cookie
 			cookie, err := r.Cookie("token")
 			if err != nil || cookie.Value == "" {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
 
-			// Validate token and extract claims
 			tokenString := cookie.Value
 			claims, err := securityAuth.ParseTokenWithClaims(tokenString)
 			if err != nil {
@@ -94,12 +103,9 @@ func AuthMiddleware(options *AuthOptions) Middleware {
 				return
 			}
 
-			// Store user ID in context for downstream handlers
-			userID := claims.UserId
 			ctx := r.Context()
-			contextWithUser := context.WithValue(ctx, userIDContextKey, userID)
-			
-			// Continue processing with enriched context
+			contextWithUser := context.WithValue(ctx, userIDContextKey, claims.UserId)
+
 			next.ServeHTTP(w, r.WithContext(contextWithUser))
 		})
 	}

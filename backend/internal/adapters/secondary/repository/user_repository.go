@@ -16,7 +16,6 @@ import (
 // It requires a *sqlx.DB for database operations, a Generator for creating salts, and a Hasher for hashing passwords.
 type SQLUserRepository struct {
 	db            *sqlx.DB
-	saltGenerator securityAuth.Generator
 	hasher        securityAuth.Hasher
 }
 
@@ -24,14 +23,11 @@ type SQLUserRepository struct {
 
 // It logs a fatal error if any dependency is nil, ensuring that the repository always has a valid database connection, salt generator, and hasher.
 // Returns an output.UserRepository ready for use.
-func NewSQLUserRepository(db *sqlx.DB, saltGenerator securityAuth.Generator, hasher securityAuth.Hasher) output.UserRepository {
+func NewSQLUserRepository(db *sqlx.DB, hasher securityAuth.Hasher) output.UserRepository {
 	if db == nil {
 		log.Fatal(errors.NewInternalError(errors.ErrDatabaseConnection).Error())
 	}
 
-	if saltGenerator == nil {
-		log.Fatal(errors.NewInternalError("Salt generator not initialized").Error())
-	}
 	if hasher == nil {
 		log.Fatal(errors.NewInternalError("Hasher not initialized").Error())
 	}
@@ -40,7 +36,6 @@ func NewSQLUserRepository(db *sqlx.DB, saltGenerator securityAuth.Generator, has
 
 	return &SQLUserRepository{
 		db:            db,
-		saltGenerator: saltGenerator,
 		hasher:        hasher,
 	}
 }
@@ -75,41 +70,21 @@ func (r *SQLUserRepository) GetHashPassword(username string) (string, error) {
 	return hashPassword, nil
 }
 
-// GetSalt retrieves the salt value used when hashing the user's password.
-
-// If the user is not found, returns a NotFoundError. Other SQL errors are wrapped as internal errors.
-func (r *SQLUserRepository) GetSalt(username string) (string, error) {
-	var salt string
-	query := "SELECT Salt FROM User_Registration WHERE UserName = ?"
-	err := r.db.QueryRow(query, username).Scan(&salt)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", errors.NewNotFoundError(errors.ErrUserNotFound)
-		}
-		return "", errors.NewInternalError(errors.ErrDatabaseQuery).WithError(err)
-	}
-	return salt, nil
-}
 
 // SaveUser inserts a new user into the database with a salted and hashed password.
 
 // It generates a new salt, combines it with the plain password, hashes the result, and executes an INSERT statement. Any generation, hashing, or SQL errors are wrapped as internal errors.
 func (r *SQLUserRepository) SaveUser(username, password string) error {
-	// Generate a new salt for this user
-	salt, err := r.saltGenerator.Generate()
-	if err != nil {
-		return errors.NewInternalError(errors.ErrDatabaseInsert).WithError(err)
-	}
 
-	// Combine password and salt, then hash
-	combined := securityAuth.Combined(password, salt)
-	hash, err := r.hasher.Hash(combined)
+	hash, err := r.hasher.Hash([]byte(password))
+	log.Println("hash", hash)
 	if err != nil {
 		return errors.NewInternalError(errors.ErrDatabaseInsert).WithError(err)
 	}
 
 	// Insert the new user record
-	_, err = r.db.Exec("INSERT INTO User_Registration (UserName, Password, Salt) VALUES (?, ?, ?)", username, hash, salt)
+	_, err = r.db.Exec("INSERT INTO User_Registration (UserName, Password) VALUES (?, ?)", username, hash)
+	log.Println("err", err)
 	if err != nil {
 		return errors.NewInternalError(errors.ErrDatabaseInsert).WithError(err)
 	}

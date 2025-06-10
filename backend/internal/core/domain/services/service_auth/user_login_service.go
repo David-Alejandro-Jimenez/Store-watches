@@ -65,11 +65,6 @@ func (l *UserLoginService) Login(account models.Account) (string, error) {
 		return "", errors.NewNotFoundError(errors.ErrUserNotFound)
 	}
 
-	// 3. Retrieve salt and hashed password
-	salt, err := l.UserRepo.GetSalt(account.UserName)
-	if err != nil {
-		return "", err
-	}
 	storedHash, err := l.UserRepo.GetHashPassword(account.UserName)
 	if err != nil {
 		return "", err
@@ -81,8 +76,7 @@ func (l *UserLoginService) Login(account models.Account) (string, error) {
 	}
 
 	// 4. Verify password by hashing provided password with salt
-	passwordWithSalt := append([]byte(account.Password), salt...)
-	err = bcrypt.CompareHashAndPassword([]byte(storedHash), passwordWithSalt)
+	err = bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(account.Password))
 	if err != nil {
 		return "", errors.NewAuthError(errors.ErrInvalidCredentials)
 	}

@@ -15,11 +15,6 @@ type UserRepository interface {
 		// - Storage system failure occurs
 	GetHashPassword(username string) (string, error)
 
-	// GetSalt retrieves the cryptographic salt used in password hashing.
-	// The salt should be uniquely generated per user during registration.
-	// Returns an error if the user doesn't exist or salt retrieval fails.
-	GetSalt(username string) (string, error)
-
 	// SaveUser persists a new user record with secure credential storage.
 	// Implementations should:
 		// - Generate unique salt per user
