@@ -23,10 +23,10 @@ func TestUserNameValidator(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := validator.Validate(tc.input)
 			if tc.wantErr && err == nil {
-				t.Errorf("quería error con input=%q, pero no hubo", tc.input)
+				t.Errorf("I wanted an error with input=%q, but there wasn't one.", tc.input)
 			}
 			if !tc.wantErr && err != nil {
-				t.Errorf("no quería error con input=%q, pero hubo: %v", tc.input, err)
+				t.Errorf("I didn't want an error with input=%q, but there was: %v", tc.input, err)
 			}
 		})
 	}
