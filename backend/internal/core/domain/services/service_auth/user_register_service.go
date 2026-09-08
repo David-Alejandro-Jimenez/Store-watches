@@ -28,7 +28,7 @@ type UserRegisterService struct {
 //
 // Returns:
 //   - input.UserServiceRegister: the registration service interface.
-func NewUserRegisterService(userRepo output.UserRepository, userNameValidator, passwordValidator input.Validator, emailValidator input.Validator, tokenService output.TokenService, csrfService output.CSRFService, passwordHasher security_auth.Hasher) input.UserServiceRegister {
+func NewUserRegisterService(userRepo output.UserRepository, userNameValidator, passwordValidator input.Validator, emailValidator input.Validator, tokenService output.TokenService, csrfService output.CSRFService, passwordHasher security_auth.Hasher,  codeVerificationService input.CodeVerificationService, codeVerificationSender output.CodeVerificationSender) input.UserServiceRegister {
 	return &UserRegisterService{
 		BaseAuthService: BaseAuthService{
 			UserRepo:          userRepo,
@@ -38,6 +38,8 @@ func NewUserRegisterService(userRepo output.UserRepository, userNameValidator, p
 			TokenService:      tokenService,
 			CSRFService:       csrfService,
 			Hasher:            passwordHasher,
+			CodeVerificationService: codeVerificationService,
+			CodeVerificationSender: codeVerificationSender,
 		},
 	}
 }
@@ -109,5 +111,16 @@ func (r *UserRegisterService) Register(ctx context.Context, request dto.Register
 	if err != nil {
 		return nil, "", err
 	}
+
+	codeVerification, err := r.CodeVerificationService.GenerateCodeVerification()
+	if err != nil {
+		return nil, "", errors.NewInternalError(errors.ErrGeneratingCodeVerification).WithError(err)
+	}
+
+	err = r.SendCodeVerification(newUser.Email, codeVerification)
+	if err != nil {
+		return nil, "", err
+	}
+
 	return tokens, csrfToken, nil
 }

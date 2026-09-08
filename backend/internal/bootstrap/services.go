@@ -7,8 +7,9 @@ import (
 
 	repository_mysql "github.com/David-Alejandro-Jimenez/ecommerce-platform/internal/adapters/secondary/repository/mysql"
 	"github.com/David-Alejandro-Jimenez/ecommerce-platform/internal/core/domain/services/service_auth"
-	"github.com/David-Alejandro-Jimenez/ecommerce-platform/internal/core/domain/services/service_reviews"
+	"github.com/David-Alejandro-Jimenez/ecommerce-platform/internal/core/domain/services/service_code_verification"
 	"github.com/David-Alejandro-Jimenez/ecommerce-platform/internal/core/domain/services/service_products"
+	"github.com/David-Alejandro-Jimenez/ecommerce-platform/internal/core/domain/services/service_reviews"
 	"github.com/David-Alejandro-Jimenez/ecommerce-platform/internal/core/ports/input"
 	"github.com/David-Alejandro-Jimenez/ecommerce-platform/internal/core/ports/output"
 	"github.com/David-Alejandro-Jimenez/ecommerce-platform/pkg/security/security_auth"
@@ -62,12 +63,14 @@ func SetupProductsService(db *sqlx.DB) (input.ProductsGetService, error) {
 // Returns:
 //   - input.UserServiceLogin: the service handling user authentication.
 //   - input.UserServiceRegister: the service handling new user creation.
-func SetupUserService(userRepo output.UserRepository, tokenService output.TokenService, csrfService output.CSRFService) (input.UserServiceLogin, input.UserServiceRegister) {
+func SetupUserService(userRepo output.UserRepository, tokenService output.TokenService, csrfService output.CSRFService, codeVerificationSender output.CodeVerificationSender) (input.UserServiceLogin, input.UserServiceRegister) {
 	// Initialize specific domain validators.
 	userNameValidator := &service_auth.UserNameValidator{}
 	passwordValidator := &service_auth.PasswordValidator{}
 	emailValidator := &service_auth.EmailValidator{}
 	passwordHasher := &security_auth.BcryptHasher{}
+	codeVerificationService := service_code_verification.NewCodeVerificationService()
 
-	return service_auth.NewUserLoginService(userRepo, userNameValidator, passwordValidator, tokenService, csrfService), service_auth.NewUserRegisterService(userRepo, userNameValidator, passwordValidator, emailValidator, tokenService, csrfService, passwordHasher)
+	return service_auth.NewUserLoginService(userRepo, userNameValidator, passwordValidator, tokenService, csrfService),
+	service_auth.NewUserRegisterService(userRepo, userNameValidator, passwordValidator, emailValidator, tokenService, csrfService, passwordHasher, codeVerificationService, codeVerificationSender)
 }

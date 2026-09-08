@@ -36,6 +36,10 @@ type BaseAuthService struct {
 
 	// CSRFService: domain service to manage the lifecycle of CSRF tokens.
 	CSRFService output.CSRFService
+
+	CodeVerificationService input.CodeVerificationService
+
+	CodeVerificationSender output.CodeVerificationSender
 }
 
 func (b *BaseAuthService) HashearPassword(password []byte) (string, error) {
@@ -122,4 +126,12 @@ func (b *BaseAuthService) GenerateCSRFToken(userID string) (string, error) {
 	}
 
 	return csrfToken, nil
+}
+
+func (b *BaseAuthService) SendCodeVerification(email string, code string) error {
+	emailErr := b.CodeVerificationSender.SendCodeVerification(email, code)
+	if emailErr != nil {
+		return errors.NewInternalError(errors.ErrGeneratingCodeVerification).WithError(emailErr)
+	}
+	return nil
 }

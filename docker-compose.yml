@@ -91,6 +91,8 @@ services:
       REDIS_WRITE_TIMEOUT: "3s"
       SECURITY_JWT_JWT_SECRET: ${SECURITY_JWT_JWT_SECRET}
       STATIC_DIR: /frontend
+      RESEND_EMAIL_API_KEY: ${RESEND_EMAIL_API_KEY}
+      RESEND_EMAIL_FROM: ${RESEND_EMAIL_FROM}
     depends_on:
       mysql:
         condition: service_healthy

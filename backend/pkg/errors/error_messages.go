@@ -19,6 +19,7 @@ const (
 	ErrCSRFTokenNotFound  = "CSRF token not found"
 	ErrInvalidEmail       = "Invalid email address"
 	ErrEmailAlreadyExists  = "The email address is already registered"
+	ErrGeneratingCodeVerification = "Error generating code verification"
 
 	// Database errors
 	ErrDatabaseTransaction = "Error starting database transaction"

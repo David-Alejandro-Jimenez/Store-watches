@@ -5,6 +5,7 @@ package bootstrap
 import (
 	"fmt"
 
+	"github.com/David-Alejandro-Jimenez/ecommerce-platform/internal/adapters/secondary/notification"
 	repository_mysql "github.com/David-Alejandro-Jimenez/ecommerce-platform/internal/adapters/secondary/repository/mysql"
 	"github.com/David-Alejandro-Jimenez/ecommerce-platform/internal/adapters/secondary/security/jwt"
 	"github.com/David-Alejandro-Jimenez/ecommerce-platform/internal/adapters/secondary/static"
@@ -49,4 +50,10 @@ func SetupUserRepository(db *sqlx.DB) (output.UserRepository, error) {
 // SetupTokenService creates a new JWTService instance with the secret key from config.
 func SetupTokenService(appConfig *config.AppConfig) *jwt.JWTService {
 	return jwt.NewJWTService(appConfig.GetJWTSecret())
+}
+
+func SetupCodeVerificationSender(appConfig *config.AppConfig) output.CodeVerificationSender {
+	apiKey := appConfig.GetResendEmailAPIKey()
+	fromEmail := appConfig.GetResendEmailFrom()
+	return notification.NewCodeVerificationNotification(apiKey, fromEmail)
 }

@@ -52,9 +52,16 @@ func (a *Application) BuildDependencies() (*Dependencies, error) {
 	tokenService := bootstrap.SetupTokenService(a.config)
 	csrfService := bootstrap.SetupCSRFService(a.redisClient)
 	blacklistRepo := bootstrap.SetupTokenBlacklistRepository(a.redisClient)
+	codeVerificationSender := bootstrap.SetupCodeVerificationSender(a.config)
 
 	// Inject repositories and services into their respective application logic layers.
-	userServiceLogin, userServiceRegister := bootstrap.SetupUserService(userRepo, tokenService, csrfService)
+	userServiceLogin, userServiceRegister := bootstrap.SetupUserService(
+		userRepo, 
+		tokenService, 
+		csrfService, 
+		codeVerificationSender,
+	)
+	
 	reviewGetService, reviewAddService, err := bootstrap.SetupReviewService(a.db)
 	if err != nil {
 		return nil, fmt.Errorf("build dependencies: %w", err)

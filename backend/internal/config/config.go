@@ -70,6 +70,8 @@ func ValidateRequiredConfig(config *viper.Viper) {
 		"REDIS_DIAL_TIMEOUT",
 		"REDIS_READ_TIMEOUT",
 		"REDIS_WRITE_TIMEOUT",
+		"RESEND_EMAIL_API_KEY",
+		"RESEND_EMAIL_FROM",
 	}
 
 	missing := []string{}
@@ -87,6 +89,14 @@ func ValidateRequiredConfig(config *viper.Viper) {
 	if len(missing) > 0 {
 		log.Fatalf("Missing configuration (use ENV vars or .env file): %v", missing)
 	}
+}
+
+func (a *AppConfig) GetResendEmailAPIKey() string {
+	return a.config.GetString("RESEND_EMAIL_API_KEY")
+}
+
+func (a *AppConfig) GetResendEmailFrom() string {
+	return a.config.GetString("RESEND_EMAIL_FROM")
 }
 
 // GetString returns a string value from the configuration by key.
